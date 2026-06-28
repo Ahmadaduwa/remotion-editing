@@ -1,0 +1,19 @@
+{
+  "name": "remotion-blank",
+  "version": "1.0.0",
+  "description": "Remotion render pipeline (Dockerized)",
+  "scripts": {
+    "start": "remotion preview src/index.ts",
+    "build:short": "remotion render src/index.ts VideoShort /app/output/short.mp4",
+    "build:long": "remotion render src/index.ts VideoLong /app/output/long.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.484",
+    "@remotion/renderer": "^4.0.484",
+    "remotion": "^4.0.484"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3"
+  }
+}

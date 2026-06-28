@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remotion Video subtitle & SFX Editor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Outfit:wght@300;400;500;600;700;900&family=Noto+Sans+Thai:wght@300;400;500;600;700;900&family=Kanit:wght@300;400;600;800&family=Prompt:wght@300;400;600;800&family=Sarabun:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <span class="logo-icon">🎬</span>
+                <h1>Remotion Pipeline <span>Thai Fixed + AI SFX</span></h1>
+            </div>
+            <div class="project-selector-area">
+                <label for="project-select">Project: </label>
+                <select id="project-select">
+                    <option value="">-- Create New Project --</option>
+                </select>
+            </div>
+        </header>
+
+        <!-- Stepper Navigation -->
+        <div class="stepper-container">
+            <div class="step active" data-step="1">
+                <div class="step-num">1</div>
+                <div class="step-title">Source Video</div>
+            </div>
+            <div class="step-line"></div>
+            <div class="step" data-step="2">
+                <div class="step-num">2</div>
+                <div class="step-title">AI Transcription</div>
+            </div>
+            <div class="step-line"></div>
+            <div class="step" data-step="3">
+                <div class="step-num">3</div>
+                <div class="step-title">Human-in-the-Loop</div>
+            </div>
+            <div class="step-line"></div>
+            <div class="step" data-step="4">
+                <div class="step-num">4</div>
+                <div class="step-title">SFX & Overlays</div>
+            </div>
+            <div class="step-line"></div>
+            <div class="step" data-step="5">
+                <div class="step-num">5</div>
+                <div class="step-title">Cut & Render</div>
+            </div>
+        </div>
+
+        <!-- Main Workspace -->
+        <main class="workspace-area">
+            
+            <!-- STEP 1: SELECT VIDEO -->
+            <section id="step-pane-1" class="step-pane active">
+                <div class="card pane-card">
+                    <h2>Choose or Upload Video</h2>
+                    <p class="subtitle">Select a video from the server directory or upload a new MP4/MOV file.</p>
+                    
+                    <div class="upload-split">
+                        <div class="upload-zone" id="drop-zone">
+                            <span class="upload-icon">📤</span>
+                            <h3>Drag & Drop Video here</h3>
+                            <p>or click to browse files (MP4, MOV, MKV)</p>
+                            <input type="file" id="file-input" accept="video/*" style="display: none;">
+                            <div class="progress-bar-container" id="upload-progress-container" style="display: none;">
+                                <div class="progress-bar" id="upload-progress-bar"></div>
+                                <span class="progress-label" id="upload-progress-label">Uploading 0%</span>
+                            </div>
+                        </div>
+
+                        <div class="server-videos-zone">
+                            <h3>Existing Videos on Server</h3>
+                            <div class="video-grid" id="server-videos-list">
+                                <div class="loading-spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- STEP 2: TRANSCRIPTION -->
+            <section id="step-pane-2" class="step-pane">
+                <div class="card pane-card text-center">
+                    <h2>AI Transcription & Auto-Fixes</h2>
+                    <p class="subtitle">We will run Whisper (Word-Level timestamps) ➔ Thai segmentation fixer (PyThaiNLP) ➔ AI spelling corrections.</p>
+                    
+                    <div class="pipeline-loader-box">
+                        <div class="pulse-ring"></div>
+                        <div class="pipeline-stages">
+                            <div class="stage-item" id="stage-whisper"><span class="status-bullet"></span> Whisper Transcription</div>
+                            <div class="stage-item" id="stage-thai-fix"><span class="status-bullet"></span> Thai word segment re-joining</div>
+                            <div class="stage-item" id="stage-ai-correct"><span class="status-bullet"></span> LLM Spelling Corrector</div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary btn-large" id="start-transcription-btn">Start AI Processing Pipeline</button>
+                    <div class="loading-status-text" id="transcription-status-text"></div>
+                </div>
+            </section>
+
+            <!-- STEP 3: HUMAN LOOP SUBTITLE EDITOR -->
+            <section id="step-pane-3" class="step-pane">
+                <div class="split-layout">
+                    <!-- Left: Subtitle Editor -->
+                    <div class="card pane-card flex-2">
+                        <div class="card-header-actions">
+                            <h2>Human Subtitle Loop</h2>
+                            <button class="btn btn-success" id="apply-subtitle-edits-btn">Apply Subtitle Edits</button>
+                        </div>
+                        <p class="subtitle">Review and correct the Thai sentences. Timestamps will automatically re-align.</p>
+                        
+                        <div class="subtitle-editor-list" id="subtitle-sentences-list">
+                            <!-- Rendered dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Right: HTML5 Live Preview & Metadata -->
+                    <div class="card pane-card flex-1">
+                        <h3>HTML5 Live Preview</h3>
+                        <div class="preview-player-wrapper">
+                            <video id="preview-video" controls playsinline></video>
+                            <div id="preview-subtitle-overlay" class="preview-subtitle-overlay-box"></div>
+                        </div>
+                        <br>
+                        <h3>Project Details</h3>
+                        <div class="metadata-list" id="project-meta">
+                            <div class="meta-item"><strong>Video:</strong> <span id="meta-video-name">Loading...</span></div>
+                            <div class="meta-item"><strong>Duration:</strong> <span id="meta-video-duration">Loading...</span></div>
+                            <div class="meta-item"><strong>Segments:</strong> <span id="meta-segment-count">0</span></div>
+                        </div>
+                        <div class="alert alert-info">
+                            💡 Edit spelling or drag blocks below. The system aligns word timestamps within your adjusted segment boundaries.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subtitle Visual Timeline Editor (Feature 5) -->
+                <div class="card pane-card timeline-card" style="margin-top: 25px;">
+                    <h3>Visual Subtitle Timeline Adjuster</h3>
+                    <p class="subtitle">Drag the left/right boundaries of each block to adjust segment timings visually.</p>
+                    <div class="timeline-container-outer">
+                        <div class="timeline-ruler" id="timeline-ruler"></div>
+                        <div class="timeline-scroll-container" id="timeline-scroll-container">
+                            <div class="timeline-tracks-area" id="timeline-tracks-area"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- STEP 4: SFX & OVERLAYS TIMELINE -->
+            <section id="step-pane-4" class="step-pane">
+                <div class="split-layout">
+                    <!-- Left: Overlays Table & Form -->
+                    <div class="card pane-card flex-2">
+                        <div class="card-header-actions">
+                            <h2>Suggested Text & SFX Overlays</h2>
+                            <div class="btn-group">
+                                <button class="btn btn-secondary" id="suggest-overlays-btn">Suggest Overlays (AI)</button>
+                                <button class="btn btn-outline" id="download-overlays-btn">Download JSON Overlays</button>
+                            </div>
+                        </div>
+                        <p class="subtitle">AI suggestions for pop-up words (text) and sound effects (SFX) to add excitement.</p>
+                        
+                        <div class="overlay-timeline-table-container">
+                            <table class="overlay-table">
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Time (s)</th>
+                                        <th>Asset / Content</th>
+                                        <th>Style / Pos</th>
+                                        <th>Volume / End</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="overlays-list-tbody">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <button class="btn btn-secondary" style="margin-top: 15px;" id="add-overlay-btn">+ Add Overlay Manually</button>
+                    </div>
+
+                    <!-- Right: Add/Edit Overlay Form -->
+                    <div class="card pane-card flex-1" id="overlay-edit-card">
+                        <h3>Live Preview</h3>
+                        <div class="preview-player-wrapper" style="margin-bottom: 20px;">
+                            <video id="preview-video-step4" controls playsinline></video>
+                            <div id="preview-subtitle-overlay-step4" class="preview-subtitle-overlay-box"></div>
+                        </div>
+                        <h3>Overlay Editor</h3>
+                        <form id="overlay-form">
+                            <div class="form-group">
+                                <label for="form-overlay-type">Type</label>
+                                <select id="form-overlay-type">
+                                    <option value="text">Text Pop-up</option>
+                                    <option value="audio">SFX Sound Effect</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="form-overlay-start">Start Time (seconds)</label>
+                                <input type="number" id="form-overlay-start" step="0.1" min="0" value="0">
+                            </div>
+
+                            <div class="form-group" id="form-group-end">
+                                <label for="form-overlay-end">End Time (seconds, -1 for full)</label>
+                                <input type="number" id="form-overlay-end" step="0.1" min="-1" value="-1">
+                            </div>
+
+                            <div class="form-group" id="form-group-content">
+                                <label for="form-overlay-content">Text Content</label>
+                                <input type="text" id="form-overlay-content" placeholder="e.g. WOW!">
+                            </div>
+
+                            <div class="form-group" id="form-group-asset">
+                                <label for="form-overlay-asset">Sound Effect Asset</label>
+                                <select id="form-overlay-asset">
+                                    <!-- SFX select items -->
+                                </select>
+                            </div>
+
+                            <div class="form-group" id="form-group-style">
+                                <label for="form-overlay-style">Text Style</label>
+                                <select id="form-overlay-style">
+                                    <option value="default">Default Fade</option>
+                                    <option value="hook">Hook (Scale/Spring)</option>
+                                    <option value="cta">CTA (Pulse)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group" id="form-group-position">
+                                <label for="form-overlay-position">Text Position</label>
+                                <select id="form-overlay-position">
+                                    <option value="center">Center</option>
+                                    <option value="top">Top</option>
+                                    <option value="bottom">Bottom</option>
+                                    <option value="bottom-right">Bottom Right</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group" id="form-group-volume">
+                                <label for="form-overlay-volume">Audio Volume</label>
+                                <input type="range" id="form-overlay-volume" min="0" max="1" step="0.1" value="1.0">
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-full" id="save-overlay-btn">Add Overlay</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- STEP 5: RENDER VIDEO -->
+            <section id="step-pane-5" class="step-pane">
+                <div class="split-layout">
+                    <!-- Left: Render controls -->
+                    <div class="card pane-card flex-1">
+                        <h2>Cut & Render Settings</h2>
+                        <p class="subtitle">Stitch your video, choose formatting, and start output compilation.</p>
+                        
+                        <div class="form-group">
+                            <label>Video Mode (Aspect Ratio)</label>
+                            <div class="radio-card-group">
+                                <label class="radio-card">
+                                    <input type="radio" name="render-mode" value="short" checked>
+                                    <div class="card-inner">
+                                        <span class="icon">📱</span>
+                                        <strong>Short (9:16)</strong>
+                                        <span>Vertical format (TikTok/Reels)</span>
+                                    </div>
+                                </label>
+                                <label class="radio-card">
+                                    <input type="radio" name="render-mode" value="long">
+                                    <div class="card-inner">
+                                        <span class="icon">💻</span>
+                                        <strong>Long (16:9)</strong>
+                                        <span>Horizontal widescreen (YouTube)</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="render-subtitle-style">Karaoke Subtitle Style</label>
+                            <select id="render-subtitle-style">
+                                <option value="karaoke">Karaoke Highlight</option>
+                                <option value="static">Static Sentence blocks</option>
+                                <option value="none">No Subtitles</option>
+                            </select>
+                        </div>
+
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="render-trim-silence" checked>
+                                <span>Trim Silence (skip gaps > 0.4s & fillers)</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="render-auto-zoom" checked>
+                                <span>Apply Auto Ken-Burns camera zoom</span>
+                            </label>
+                        </div>
+
+                        <!-- Subtitle Styling Customizer (Feature 3) -->
+                        <div class="form-group" style="margin-top: 25px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                            <label>Subtitle Styling Customizer</label>
+                            <p class="subtitle" style="margin-bottom: 15px;">Configure font style, highlights, and animations for subtitles.</p>
+                            <div class="styling-panel-grid">
+                                <div class="form-group-sub">
+                                    <label for="style-font-family">Font Family</label>
+                                    <select id="style-font-family">
+                                        <option value="Noto Sans Thai">Noto Sans Thai</option>
+                                        <option value="Kanit">Kanit</option>
+                                        <option value="Prompt">Prompt</option>
+                                        <option value="Sarabun">Sarabun</option>
+                                        <option value="Inter">Inter</option>
+                                        <option value="Outfit">Outfit</option>
+                                    </select>
+                                </div>
+                                <div class="form-group-sub">
+                                    <label for="style-font-size">Font Size (px)</label>
+                                    <input type="number" id="style-font-size" min="12" max="100" value="44">
+                                </div>
+                                <div class="form-group-sub">
+                                    <label for="style-text-color">Text Color</label>
+                                    <input type="color" id="style-text-color" value="#ffffff">
+                                </div>
+                                <div class="form-group-sub">
+                                    <label for="style-highlight-color">Active Word Color</label>
+                                    <input type="color" id="style-highlight-color" value="#FFD700">
+                                </div>
+                                <div class="form-group-sub">
+                                    <label for="style-bg-type">Background Style</label>
+                                    <select id="style-bg-type">
+                                        <option value="card">Translucent Card</option>
+                                        <option value="outline">Dark Stroke Outline</option>
+                                        <option value="none">No Background</option>
+                                    </select>
+                                </div>
+                                <div class="form-group-sub">
+                                    <label for="style-bg-color">Card Color</label>
+                                    <input type="color" id="style-bg-color" value="#000000">
+                                </div>
+                                <div class="form-group-sub">
+                                    <label for="style-animation">Highlight Animation</label>
+                                    <select id="style-animation">
+                                        <option value="pop">Spring Scale Pop</option>
+                                        <option value="bounce">Bounce Up</option>
+                                        <option value="glow">Active Word Glow</option>
+                                        <option value="none">Static Highlight</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Background Music Panel (Feature 4) -->
+                        <div class="form-group" style="margin-top: 25px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                            <label>Background Music (BGM)</label>
+                            <p class="subtitle" style="margin-bottom: 15px;">Overlay stock instrumental music into the video composition.</p>
+                            <div class="bgm-panel-grid">
+                                <div class="form-group-sub">
+                                    <label for="bgm-track">Music Track</label>
+                                    <select id="bgm-track">
+                                        <option value="">-- No Background Music --</option>
+                                        <option value="assets/bgm/chill_lofi.wav">Chill Lofi Drum & Keys Loop</option>
+                                        <option value="assets/bgm/ambient_pad.wav">Ambient Pad Progression</option>
+                                    </select>
+                                </div>
+                                <div class="form-group-sub">
+                                    <label for="bgm-volume">BGM Volume</label>
+                                    <input type="range" id="bgm-volume" min="0" max="1" step="0.05" value="0.15">
+                                    <span id="bgm-volume-value" style="font-size:12px; color:var(--text-secondary); margin-left: 8px;">15%</span>
+                                </div>
+                                <div class="checkbox-group" style="margin-top: 15px;">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="bgm-enable-ducking" checked>
+                                        <span>Auto-Duck music volume during speech (smooth fade BGM out 85%)</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Clip Selection (Cut/Combine) -->
+                        <div class="form-group" style="margin-top: 20px;">
+                            <label>Video Range Cuts (Stitch ranges together)</label>
+                            <div class="range-list" id="range-cuts-list">
+                                <!-- Dynamic ranges -->
+                            </div>
+                            <button class="btn btn-secondary btn-small" id="add-range-cut-btn" style="margin-top: 10px;">+ Add Range Segment</button>
+                        </div>
+
+                        <button class="btn btn-primary btn-large w-full" style="margin-top: 25px;" id="trigger-render-btn">Render Final Video</button>
+                    </div>
+
+                    <!-- Right: Rendering status -->
+                    <div class="card pane-card flex-1" id="render-status-card">
+                        <h2>Rendering Pipeline Status</h2>
+                        <p class="subtitle">Remotion builds the video frame-by-frame using headless browser rendering.</p>
+                        
+                        <div class="render-progress-box" id="render-progress-section" style="display:none;">
+                            <div class="circular-progress">
+                                <svg class="progress-ring" width="120" height="120">
+                                    <circle class="progress-ring__circle-bg" stroke="#1f2937" stroke-width="8" fill="transparent" r="50" cx="60" cy="60"/>
+                                    <circle class="progress-ring__circle" id="render-circle-progress" stroke="#8b5cf6" stroke-width="8" fill="transparent" r="50" cx="60" cy="60"/>
+                                </svg>
+                                <div class="progress-value" id="render-progress-percent">0%</div>
+                            </div>
+                            <h3 id="render-status-label">Queued...</h3>
+                            <p id="render-status-details">Waiting for rendering slot</p>
+                        </div>
+
+                        <div class="rendered-output-box" id="rendered-output-section" style="display:none;">
+                            <span class="check-icon">✅</span>
+                            <h3>Video Rendered Successfully!</h3>
+                            <video id="final-video-player" controls width="100%" class="rendered-video-preview"></video>
+                            <a id="final-video-download" class="btn btn-success btn-large w-full text-center" style="display:block; text-decoration:none; margin-top:15px;" download>Download Video</a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>

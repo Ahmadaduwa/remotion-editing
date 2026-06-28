@@ -1,0 +1,29 @@
+services:
+  remotion-render:
+    build: .
+    container_name: remotion-render
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:8000:8000"
+    environment:
+      - OLLAMA_URL=http://100.119.233.96:11434
+      - OLLAMA_MODEL=qwen2.5:7b
+      - WHISPER_MODE=cpu
+      - MAX_CONCURRENT_RENDERS=1
+    volumes:
+      - /home/aduwa/share/videos:/app/input:ro
+      - /home/aduwa/share/edited_videos:/app/output
+      - /home/aduwa/projects/editing/remotion-blank/data:/app/data
+      - /home/aduwa/projects/editing/remotion-blank/assets:/app/assets
+      - /home/aduwa/projects/editing/remotion-blank/public:/app/public
+    deploy:
+      resources:
+        limits:
+          cpus: "6"
+          memory: "4G"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+

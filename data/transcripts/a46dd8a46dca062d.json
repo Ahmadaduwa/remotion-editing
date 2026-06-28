@@ -1,0 +1,2524 @@
+{
+  "source": "short.MOV",
+  "language": "th",
+  "language_probability": 1,
+  "duration": 111.593,
+  "backend": "cpu_fallback",
+  "error_message": null,
+  "segments": [
+    {
+      "text": "สวัสดีครับ ตอนนี้ผมอยู่ปี 4 แล้ว",
+      "start": 0.0,
+      "end": 2.6,
+      "words": [
+        {
+          "word": "ส",
+          "start": 0.0,
+          "end": 0.38,
+          "is_filler": false
+        },
+        {
+          "word": "ว",
+          "start": 0.38,
+          "end": 0.4,
+          "is_filler": false
+        },
+        {
+          "word": "ั",
+          "start": 0.4,
+          "end": 0.42,
+          "is_filler": false
+        },
+        {
+          "word": "ส",
+          "start": 0.42,
+          "end": 0.42,
+          "is_filler": false
+        },
+        {
+          "word": "ด",
+          "start": 0.42,
+          "end": 0.44,
+          "is_filler": false
+        },
+        {
+          "word": "ี",
+          "start": 0.44,
+          "end": 0.44,
+          "is_filler": false
+        },
+        {
+          "word": "คร",
+          "start": 0.44,
+          "end": 0.58,
+          "is_filler": false
+        },
+        {
+          "word": "ั",
+          "start": 0.58,
+          "end": 0.66,
+          "is_filler": false
+        },
+        {
+          "word": "บ",
+          "start": 0.66,
+          "end": 0.66,
+          "is_filler": false
+        },
+        {
+          "word": "ต",
+          "start": 0.92,
+          "end": 0.98,
+          "is_filler": false
+        },
+        {
+          "word": "อน",
+          "start": 0.98,
+          "end": 1.1,
+          "is_filler": false
+        },
+        {
+          "word": "น",
+          "start": 1.1,
+          "end": 1.2,
+          "is_filler": false
+        },
+        {
+          "word": "ี้",
+          "start": 1.2,
+          "end": 1.22,
+          "is_filler": false
+        },
+        {
+          "word": "ผม",
+          "start": 1.22,
+          "end": 1.46,
+          "is_filler": false
+        },
+        {
+          "word": "อย",
+          "start": 1.46,
+          "end": 1.96,
+          "is_filler": false
+        },
+        {
+          "word": "ู่",
+          "start": 1.96,
+          "end": 1.98,
+          "is_filler": false
+        },
+        {
+          "word": "ป",
+          "start": 1.98,
+          "end": 2.14,
+          "is_filler": false
+        },
+        {
+          "word": "ี",
+          "start": 2.14,
+          "end": 2.2,
+          "is_filler": false
+        },
+        {
+          "word": "4",
+          "start": 2.2,
+          "end": 2.32,
+          "is_filler": false
+        },
+        {
+          "word": "แล",
+          "start": 2.34,
+          "end": 2.5,
+          "is_filler": false
+        },
+        {
+          "word": "้",
+          "start": 2.5,
+          "end": 2.6,
+          "is_filler": false
+        },
+        {
+          "word": "ว",
+          "start": 2.6,
+          "end": 2.6,
+          "is_filler": false
+        }
+      ]
+    },
+    {
+      "text": "วันนี้ผมจะมาพูดถึงประสบการของผม จากการที่ผม",
+      "start": 2.9,
+      "end": 5.9,
+      "words": [
+        {
+          "word": "ว",
+          "start": 2.9,
+          "end": 3.1,
+          "is_filler": false
+        },
+        {
+          "word": "ั",
+          "start": 3.1,
+          "end": 3.16,
+          "is_filler": false
+        },
+        {
+          "word": "นน",
+          "start": 3.16,
+          "end": 3.16,
+          "is_filler": false
+        },
+        {
+          "word": "ี้",
+          "start": 3.16,
+          "end": 3.2,
+          "is_filler": false
+        },
+        {
+          "word": "ผม",
+          "start": 3.2,
+          "end": 3.34,
+          "is_filler": false
+        },
+        {
+          "word": "จะ",
+          "start": 3.34,
+          "end": 3.48,
+          "is_filler": false
+        },
+        {
+          "word": "มา",
+          "start": 3.48,
+          "end": 3.64,
+          "is_filler": false
+        },
+        {
+          "word": "พ",
+          "start": 3.64,
+          "end": 3.92,
+          "is_filler": false
+        },
+        {
+          "word": "ู",
+          "start": 3.92,
+          "end": 4.02,
+          "is_filler": false
+        },
+        {
+          "word": "ด",
+          "start": 4.02,
+          "end": 4.08,
+          "is_filler": false
+        },
+        {
+          "word": "ถ",
+          "start": 4.08,
+          "end": 4.22,
+          "is_filler": false
+        },
+        {
+          "word": "ึ",
+          "start": 4.22,
+          "end": 4.26,
+          "is_filler": false
+        },
+        {
+          "word": "ง",
+          "start": 4.26,
+          "end": 4.26,
+          "is_filler": false
+        },
+        {
+          "word": "ป",
+          "start": 4.26,
+          "end": 4.46,
+          "is_filler": false
+        },
+        {
+          "word": "ระ",
+          "start": 4.46,
+          "end": 4.46,
+          "is_filler": false
+        },
+        {
+          "word": "ส",
+          "start": 4.46,
+          "end": 4.48,
+          "is_filler": false
+        },
+        {
+          "word": "บ",
+          "start": 4.48,
+          "end": 4.54,
+          "is_filler": false
+        },
+        {
+          "word": "ก",
+          "start": 4.54,
+          "end": 4.7,
+          "is_filler": false
+        },
+        {
+          "word": "าร",
+          "start": 4.7,
+          "end": 4.76,
+          "is_filler": false
+        },
+        {
+          "word": "ข",
+          "start": 4.76,
+          "end": 4.86,
+          "is_filler": false
+        },
+        {
+          "word": "อง",
+          "start": 4.86,
+          "end": 4.88,
+          "is_filler": false
+        },
+        {
+          "word": "ผม",
+          "start": 4.88,
+          "end": 5.1,
+          "is_filler": false
+        },
+        {
+          "word": "จ",
+          "start": 5.24,
+          "end": 5.38,
+          "is_filler": false
+        },
+        {
+          "word": "าก",
+          "start": 5.38,
+          "end": 5.42,
+          "is_filler": false
+        },
+        {
+          "word": "ก",
+          "start": 5.42,
+          "end": 5.54,
+          "is_filler": false
+        },
+        {
+          "word": "าร",
+          "start": 5.54,
+          "end": 5.56,
+          "is_filler": false
+        },
+        {
+          "word": "ท",
+          "start": 5.56,
+          "end": 5.68,
+          "is_filler": false
+        },
+        {
+          "word": "ี่",
+          "start": 5.68,
+          "end": 5.68,
+          "is_filler": false
+        },
+        {
+          "word": "ผม",
+          "start": 5.68,
+          "end": 5.9,
+          "is_filler": false
+        }
+      ]
+    },
+    {
+      "text": "ได้ลองทำอะไร ๆ อย่าง ผมได้ลองทั้งพระเภทซาวแว่เช่นเวบสาย",
+      "start": 6.34,
+      "end": 12.0,
+      "words": [
+        {
+          "word": "ได",
+          "start": 6.34,
+          "end": 6.54,
+          "is_filler": false
+        },
+        {
+          "word": "้",
+          "start": 6.54,
+          "end": 6.58,
+          "is_filler": false
+        },
+        {
+          "word": "ล",
+          "start": 6.58,
+          "end": 6.7,
+          "is_filler": false
+        },
+        {
+          "word": "อง",
+          "start": 6.7,
+          "end": 6.74,
+          "is_filler": false
+        },
+        {
+          "word": "ทำ",
+          "start": 6.74,
+          "end": 6.9,
+          "is_filler": false
+        },
+        {
+          "word": "อะไร",
+          "start": 6.9,
+          "end": 7.16,
+          "is_filler": false
+        },
+        {
+          "word": "ๆ",
+          "start": 7.32,
+          "end": 7.36,
+          "is_filler": false
+        },
+        {
+          "word": "อย",
+          "start": 7.38,
+          "end": 7.6,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 7.6,
+          "end": 7.68,
+          "is_filler": false
+        },
+        {
+          "word": "าง",
+          "start": 7.68,
+          "end": 7.76,
+          "is_filler": false
+        },
+        {
+          "word": "ผม",
+          "start": 7.9,
+          "end": 8.04,
+          "is_filler": false
+        },
+        {
+          "word": "ได",
+          "start": 8.04,
+          "end": 8.32,
+          "is_filler": false
+        },
+        {
+          "word": "้",
+          "start": 8.32,
+          "end": 9.14,
+          "is_filler": false
+        },
+        {
+          "word": "ล",
+          "start": 9.14,
+          "end": 9.34,
+          "is_filler": false
+        },
+        {
+          "word": "อง",
+          "start": 9.34,
+          "end": 9.5,
+          "is_filler": false
+        },
+        {
+          "word": "ท",
+          "start": 9.5,
+          "end": 9.68,
+          "is_filler": false
+        },
+        {
+          "word": "ั้",
+          "start": 9.68,
+          "end": 9.78,
+          "is_filler": false
+        },
+        {
+          "word": "ง",
+          "start": 9.78,
+          "end": 9.9,
+          "is_filler": false
+        },
+        {
+          "word": "พ",
+          "start": 9.9,
+          "end": 10.18,
+          "is_filler": false
+        },
+        {
+          "word": "ระ",
+          "start": 10.18,
+          "end": 10.32,
+          "is_filler": false
+        },
+        {
+          "word": "เภ",
+          "start": 10.32,
+          "end": 10.96,
+          "is_filler": false
+        },
+        {
+          "word": "ท",
+          "start": 10.96,
+          "end": 11.02,
+          "is_filler": false
+        },
+        {
+          "word": "ซ",
+          "start": 11.02,
+          "end": 11.18,
+          "is_filler": false
+        },
+        {
+          "word": "า",
+          "start": 11.18,
+          "end": 11.18,
+          "is_filler": false
+        },
+        {
+          "word": "ว",
+          "start": 11.18,
+          "end": 11.26,
+          "is_filler": false
+        },
+        {
+          "word": "แ",
+          "start": 11.26,
+          "end": 11.38,
+          "is_filler": false
+        },
+        {
+          "word": "ว",
+          "start": 11.38,
+          "end": 11.38,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 11.38,
+          "end": 11.46,
+          "is_filler": false
+        },
+        {
+          "word": "เช",
+          "start": 11.46,
+          "end": 11.56,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 11.56,
+          "end": 11.56,
+          "is_filler": false
+        },
+        {
+          "word": "น",
+          "start": 11.56,
+          "end": 11.64,
+          "is_filler": false
+        },
+        {
+          "word": "เว",
+          "start": 11.64,
+          "end": 11.72,
+          "is_filler": false
+        },
+        {
+          "word": "บ",
+          "start": 11.72,
+          "end": 11.76,
+          "is_filler": false
+        },
+        {
+          "word": "ส",
+          "start": 11.76,
+          "end": 11.88,
+          "is_filler": false
+        },
+        {
+          "word": "าย",
+          "start": 11.88,
+          "end": 12.0,
+          "is_filler": false
+        }
+      ]
+    },
+    {
+      "text": "หรือว่าพวก Hardware หรือว่าพวกที่เป็น AI ร่วมถึง Cyber Security ด้วย",
+      "start": 12.5,
+      "end": 17.92,
+      "words": [
+        {
+          "word": "ห",
+          "start": 12.5,
+          "end": 12.7,
+          "is_filler": false
+        },
+        {
+          "word": "ร",
+          "start": 12.7,
+          "end": 12.72,
+          "is_filler": false
+        },
+        {
+          "word": "ื",
+          "start": 12.72,
+          "end": 12.72,
+          "is_filler": false
+        },
+        {
+          "word": "อ",
+          "start": 12.72,
+          "end": 12.72,
+          "is_filler": false
+        },
+        {
+          "word": "ว",
+          "start": 12.72,
+          "end": 12.82,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 12.82,
+          "end": 12.82,
+          "is_filler": false
+        },
+        {
+          "word": "า",
+          "start": 12.82,
+          "end": 12.86,
+          "is_filler": false
+        },
+        {
+          "word": "พ",
+          "start": 12.86,
+          "end": 12.98,
+          "is_filler": false
+        },
+        {
+          "word": "วก",
+          "start": 12.98,
+          "end": 13.08,
+          "is_filler": false
+        },
+        {
+          "word": "Hard",
+          "start": 13.08,
+          "end": 13.46,
+          "is_filler": false
+        },
+        {
+          "word": "ware",
+          "start": 13.46,
+          "end": 13.72,
+          "is_filler": false
+        },
+        {
+          "word": "ห",
+          "start": 13.74,
+          "end": 14.08,
+          "is_filler": false
+        },
+        {
+          "word": "ร",
+          "start": 14.14,
+          "end": 14.76,
+          "is_filler": false
+        },
+        {
+          "word": "ื",
+          "start": 14.76,
+          "end": 14.8,
+          "is_filler": false
+        },
+        {
+          "word": "อ",
+          "start": 14.8,
+          "end": 14.84,
+          "is_filler": false
+        },
+        {
+          "word": "ว",
+          "start": 14.84,
+          "end": 14.92,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 14.92,
+          "end": 14.92,
+          "is_filler": false
+        },
+        {
+          "word": "า",
+          "start": 14.92,
+          "end": 14.94,
+          "is_filler": false
+        },
+        {
+          "word": "พ",
+          "start": 14.94,
+          "end": 15.08,
+          "is_filler": false
+        },
+        {
+          "word": "วก",
+          "start": 15.08,
+          "end": 15.22,
+          "is_filler": false
+        },
+        {
+          "word": "ท",
+          "start": 15.22,
+          "end": 15.42,
+          "is_filler": false
+        },
+        {
+          "word": "ี่",
+          "start": 15.42,
+          "end": 15.46,
+          "is_filler": false
+        },
+        {
+          "word": "เป",
+          "start": 15.46,
+          "end": 15.6,
+          "is_filler": false
+        },
+        {
+          "word": "็",
+          "start": 15.6,
+          "end": 15.64,
+          "is_filler": false
+        },
+        {
+          "word": "น",
+          "start": 15.64,
+          "end": 15.66,
+          "is_filler": false
+        },
+        {
+          "word": "AI",
+          "start": 15.66,
+          "end": 16.0,
+          "is_filler": false
+        },
+        {
+          "word": "ร",
+          "start": 16.42,
+          "end": 16.48,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 16.48,
+          "end": 16.54,
+          "is_filler": false
+        },
+        {
+          "word": "ว",
+          "start": 16.54,
+          "end": 16.54,
+          "is_filler": false
+        },
+        {
+          "word": "ม",
+          "start": 16.54,
+          "end": 16.56,
+          "is_filler": false
+        },
+        {
+          "word": "ถ",
+          "start": 16.56,
+          "end": 16.7,
+          "is_filler": false
+        },
+        {
+          "word": "ึ",
+          "start": 16.7,
+          "end": 16.72,
+          "is_filler": false
+        },
+        {
+          "word": "ง",
+          "start": 16.72,
+          "end": 16.82,
+          "is_filler": false
+        },
+        {
+          "word": "Cyber",
+          "start": 16.82,
+          "end": 17.12,
+          "is_filler": false
+        },
+        {
+          "word": "Security",
+          "start": 17.12,
+          "end": 17.54,
+          "is_filler": false
+        },
+        {
+          "word": "ด",
+          "start": 17.66,
+          "end": 17.76,
+          "is_filler": false
+        },
+        {
+          "word": "้",
+          "start": 17.76,
+          "end": 17.82,
+          "is_filler": false
+        },
+        {
+          "word": "วย",
+          "start": 17.82,
+          "end": 17.92,
+          "is_filler": false
+        }
+      ]
+    },
+    {
+      "text": "ซึ่งในยุ่บนี้ที่เต็มไปด้วย AI ที่มันมาปฏิวัตรวงการอะไรบ้างนี้",
+      "start": 18.4,
+      "end": 22.72,
+      "words": [
+        {
+          "word": "ซ",
+          "start": 18.4,
+          "end": 18.6,
+          "is_filler": false
+        },
+        {
+          "word": "ึ",
+          "start": 18.6,
+          "end": 18.62,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 18.62,
+          "end": 18.64,
+          "is_filler": false
+        },
+        {
+          "word": "ง",
+          "start": 18.64,
+          "end": 18.7,
+          "is_filler": false
+        },
+        {
+          "word": "ใ",
+          "start": 18.7,
+          "end": 18.82,
+          "is_filler": false
+        },
+        {
+          "word": "น",
+          "start": 18.82,
+          "end": 18.82,
+          "is_filler": false
+        },
+        {
+          "word": "ย",
+          "start": 18.82,
+          "end": 18.96,
+          "is_filler": false
+        },
+        {
+          "word": "ุ",
+          "start": 18.96,
+          "end": 18.96,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 18.96,
+          "end": 19.02,
+          "is_filler": false
+        },
+        {
+          "word": "บ",
+          "start": 19.02,
+          "end": 19.02,
+          "is_filler": false
+        },
+        {
+          "word": "น",
+          "start": 19.02,
+          "end": 19.12,
+          "is_filler": false
+        },
+        {
+          "word": "ี้",
+          "start": 19.12,
+          "end": 19.18,
+          "is_filler": false
+        },
+        {
+          "word": "ท",
+          "start": 19.18,
+          "end": 19.3,
+          "is_filler": false
+        },
+        {
+          "word": "ี่",
+          "start": 19.3,
+          "end": 19.4,
+          "is_filler": false
+        },
+        {
+          "word": "เต",
+          "start": 19.4,
+          "end": 19.7,
+          "is_filler": false
+        },
+        {
+          "word": "็",
+          "start": 19.7,
+          "end": 19.7,
+          "is_filler": false
+        },
+        {
+          "word": "ม",
+          "start": 19.7,
+          "end": 19.7,
+          "is_filler": false
+        },
+        {
+          "word": "ไป",
+          "start": 19.7,
+          "end": 19.82,
+          "is_filler": false
+        },
+        {
+          "word": "ด",
+          "start": 19.82,
+          "end": 19.88,
+          "is_filler": false
+        },
+        {
+          "word": "้",
+          "start": 19.88,
+          "end": 19.88,
+          "is_filler": false
+        },
+        {
+          "word": "วย",
+          "start": 19.88,
+          "end": 19.88,
+          "is_filler": false
+        },
+        {
+          "word": "AI",
+          "start": 19.88,
+          "end": 20.22,
+          "is_filler": false
+        },
+        {
+          "word": "ท",
+          "start": 20.54,
+          "end": 20.56,
+          "is_filler": false
+        },
+        {
+          "word": "ี่",
+          "start": 20.56,
+          "end": 20.7,
+          "is_filler": false
+        },
+        {
+          "word": "ม",
+          "start": 20.7,
+          "end": 21.1,
+          "is_filler": false
+        },
+        {
+          "word": "ั",
+          "start": 21.1,
+          "end": 21.12,
+          "is_filler": false
+        },
+        {
+          "word": "น",
+          "start": 21.12,
+          "end": 21.16,
+          "is_filler": false
+        },
+        {
+          "word": "มา",
+          "start": 21.16,
+          "end": 21.4,
+          "is_filler": false
+        },
+        {
+          "word": "ป",
+          "start": 21.4,
+          "end": 21.68,
+          "is_filler": false
+        },
+        {
+          "word": "ฏ",
+          "start": 21.68,
+          "end": 21.68,
+          "is_filler": false
+        },
+        {
+          "word": "ิ",
+          "start": 21.68,
+          "end": 21.76,
+          "is_filler": false
+        },
+        {
+          "word": "ว",
+          "start": 21.76,
+          "end": 21.8,
+          "is_filler": false
+        },
+        {
+          "word": "ั",
+          "start": 21.8,
+          "end": 21.88,
+          "is_filler": false
+        },
+        {
+          "word": "ต",
+          "start": 21.88,
+          "end": 21.88,
+          "is_filler": false
+        },
+        {
+          "word": "ร",
+          "start": 21.88,
+          "end": 21.88,
+          "is_filler": false
+        },
+        {
+          "word": "ว",
+          "start": 21.88,
+          "end": 21.98,
+          "is_filler": false
+        },
+        {
+          "word": "ง",
+          "start": 21.98,
+          "end": 22.06,
+          "is_filler": false
+        },
+        {
+          "word": "ก",
+          "start": 22.06,
+          "end": 22.18,
+          "is_filler": false
+        },
+        {
+          "word": "าร",
+          "start": 22.18,
+          "end": 22.26,
+          "is_filler": false
+        },
+        {
+          "word": "อะไร",
+          "start": 22.26,
+          "end": 22.46,
+          "is_filler": false
+        },
+        {
+          "word": "บ",
+          "start": 22.46,
+          "end": 22.56,
+          "is_filler": false
+        },
+        {
+          "word": "้",
+          "start": 22.56,
+          "end": 22.56,
+          "is_filler": false
+        },
+        {
+          "word": "าง",
+          "start": 22.56,
+          "end": 22.56,
+          "is_filler": false
+        },
+        {
+          "word": "น",
+          "start": 22.56,
+          "end": 22.7,
+          "is_filler": false
+        },
+        {
+          "word": "ี้",
+          "start": 22.7,
+          "end": 22.72,
+          "is_filler": false
+        }
+      ]
+    },
+    {
+      "text": "คุณที่เป็นเด็กทั่วไปที่กำลังเลือกสาย แล้วก็กำลังงงว่าจะไปทางไหน",
+      "start": 23.26,
+      "end": 28.06,
+      "words": [
+        {
+          "word": "ค",
+          "start": 23.26,
+          "end": 23.5,
+          "is_filler": false
+        },
+        {
+          "word": "ุ",
+          "start": 23.5,
+          "end": 23.58,
+          "is_filler": false
+        },
+        {
+          "word": "ณ",
+          "start": 23.58,
+          "end": 23.76,
+          "is_filler": false
+        },
+        {
+          "word": "ท",
+          "start": 23.76,
+          "end": 24.24,
+          "is_filler": false
+        },
+        {
+          "word": "ี่",
+          "start": 24.24,
+          "end": 24.5,
+          "is_filler": false
+        },
+        {
+          "word": "เป",
+          "start": 24.5,
+          "end": 24.72,
+          "is_filler": false
+        },
+        {
+          "word": "็",
+          "start": 24.72,
+          "end": 24.78,
+          "is_filler": false
+        },
+        {
+          "word": "น",
+          "start": 24.78,
+          "end": 24.9,
+          "is_filler": false
+        },
+        {
+          "word": "เด",
+          "start": 24.9,
+          "end": 25.32,
+          "is_filler": false
+        },
+        {
+          "word": "็",
+          "start": 25.32,
+          "end": 25.34,
+          "is_filler": false
+        },
+        {
+          "word": "ก",
+          "start": 25.34,
+          "end": 25.42,
+          "is_filler": false
+        },
+        {
+          "word": "ท",
+          "start": 25.42,
+          "end": 25.84,
+          "is_filler": false
+        },
+        {
+          "word": "ั่",
+          "start": 25.84,
+          "end": 25.88,
+          "is_filler": false
+        },
+        {
+          "word": "ว",
+          "start": 25.88,
+          "end": 25.88,
+          "is_filler": false
+        },
+        {
+          "word": "ไป",
+          "start": 25.88,
+          "end": 26.06,
+          "is_filler": false
+        },
+        {
+          "word": "ท",
+          "start": 26.06,
+          "end": 26.26,
+          "is_filler": false
+        },
+        {
+          "word": "ี่",
+          "start": 26.26,
+          "end": 26.28,
+          "is_filler": false
+        },
+        {
+          "word": "ก",
+          "start": 26.28,
+          "end": 26.4,
+          "is_filler": false
+        },
+        {
+          "word": "ำ",
+          "start": 26.4,
+          "end": 26.44,
+          "is_filler": false
+        },
+        {
+          "word": "ล",
+          "start": 26.44,
+          "end": 26.46,
+          "is_filler": false
+        },
+        {
+          "word": "ั",
+          "start": 26.46,
+          "end": 26.5,
+          "is_filler": false
+        },
+        {
+          "word": "ง",
+          "start": 26.5,
+          "end": 26.5,
+          "is_filler": false
+        },
+        {
+          "word": "เล",
+          "start": 26.5,
+          "end": 26.66,
+          "is_filler": false
+        },
+        {
+          "word": "ื",
+          "start": 26.66,
+          "end": 26.66,
+          "is_filler": false
+        },
+        {
+          "word": "อก",
+          "start": 26.66,
+          "end": 26.74,
+          "is_filler": false
+        },
+        {
+          "word": "ส",
+          "start": 26.74,
+          "end": 26.88,
+          "is_filler": false
+        },
+        {
+          "word": "าย",
+          "start": 26.88,
+          "end": 26.96,
+          "is_filler": false
+        },
+        {
+          "word": "แล",
+          "start": 27.06,
+          "end": 27.06,
+          "is_filler": false
+        },
+        {
+          "word": "้",
+          "start": 27.06,
+          "end": 27.12,
+          "is_filler": false
+        },
+        {
+          "word": "วก",
+          "start": 27.12,
+          "end": 27.12,
+          "is_filler": false
+        },
+        {
+          "word": "็",
+          "start": 27.12,
+          "end": 27.12,
+          "is_filler": false
+        },
+        {
+          "word": "ก",
+          "start": 27.12,
+          "end": 27.28,
+          "is_filler": false
+        },
+        {
+          "word": "ำ",
+          "start": 27.28,
+          "end": 27.28,
+          "is_filler": false
+        },
+        {
+          "word": "ล",
+          "start": 27.28,
+          "end": 27.28,
+          "is_filler": false
+        },
+        {
+          "word": "ั",
+          "start": 27.28,
+          "end": 27.3,
+          "is_filler": false
+        },
+        {
+          "word": "ง",
+          "start": 27.3,
+          "end": 27.3,
+          "is_filler": false
+        },
+        {
+          "word": "ง",
+          "start": 27.3,
+          "end": 27.44,
+          "is_filler": false
+        },
+        {
+          "word": "ง",
+          "start": 27.44,
+          "end": 27.48,
+          "is_filler": false
+        },
+        {
+          "word": "ว",
+          "start": 27.48,
+          "end": 27.56,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 27.56,
+          "end": 27.56,
+          "is_filler": false
+        },
+        {
+          "word": "า",
+          "start": 27.56,
+          "end": 27.58,
+          "is_filler": false
+        },
+        {
+          "word": "จะ",
+          "start": 27.58,
+          "end": 27.62,
+          "is_filler": false
+        },
+        {
+          "word": "ไป",
+          "start": 27.62,
+          "end": 27.72,
+          "is_filler": false
+        },
+        {
+          "word": "ท",
+          "start": 27.72,
+          "end": 27.84,
+          "is_filler": false
+        },
+        {
+          "word": "าง",
+          "start": 27.84,
+          "end": 27.88,
+          "is_filler": false
+        },
+        {
+          "word": "ไ",
+          "start": 27.88,
+          "end": 28.06,
+          "is_filler": false
+        },
+        {
+          "word": "หน",
+          "start": 28.06,
+          "end": 28.06,
+          "is_filler": false
+        }
+      ]
+    },
+    {
+      "text": "ก็ ถ้าก็อยากฟังนะว่าผมเจออะไรมาบ้าง ว่าผมจะร้อยฟังนะ",
+      "start": 28.06,
+      "end": 33.0,
+      "words": [
+        {
+          "word": "ก",
+          "start": 28.06,
+          "end": 28.28,
+          "is_filler": false
+        },
+        {
+          "word": "็",
+          "start": 28.28,
+          "end": 29.14,
+          "is_filler": false
+        },
+        {
+          "word": "ถ",
+          "start": 29.4,
+          "end": 29.54,
+          "is_filler": false
+        },
+        {
+          "word": "้",
+          "start": 29.54,
+          "end": 29.56,
+          "is_filler": false
+        },
+        {
+          "word": "าก",
+          "start": 29.56,
+          "end": 29.62,
+          "is_filler": false
+        },
+        {
+          "word": "็",
+          "start": 29.62,
+          "end": 29.64,
+          "is_filler": false
+        },
+        {
+          "word": "อย",
+          "start": 29.64,
+          "end": 29.8,
+          "is_filler": false
+        },
+        {
+          "word": "าก",
+          "start": 29.8,
+          "end": 29.88,
+          "is_filler": false
+        },
+        {
+          "word": "ฟ",
+          "start": 29.88,
+          "end": 30.08,
+          "is_filler": false
+        },
+        {
+          "word": "ั",
+          "start": 30.08,
+          "end": 30.16,
+          "is_filler": false
+        },
+        {
+          "word": "ง",
+          "start": 30.16,
+          "end": 30.16,
+          "is_filler": false
+        },
+        {
+          "word": "นะ",
+          "start": 30.16,
+          "end": 30.32,
+          "is_filler": true
+        },
+        {
+          "word": "ว",
+          "start": 30.32,
+          "end": 30.48,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 30.48,
+          "end": 30.52,
+          "is_filler": false
+        },
+        {
+          "word": "า",
+          "start": 30.52,
+          "end": 30.62,
+          "is_filler": false
+        },
+        {
+          "word": "ผม",
+          "start": 30.62,
+          "end": 31.12,
+          "is_filler": false
+        },
+        {
+          "word": "เจ",
+          "start": 31.12,
+          "end": 31.28,
+          "is_filler": false
+        },
+        {
+          "word": "อ",
+          "start": 31.28,
+          "end": 31.3,
+          "is_filler": false
+        },
+        {
+          "word": "อะไร",
+          "start": 31.3,
+          "end": 31.4,
+          "is_filler": false
+        },
+        {
+          "word": "มา",
+          "start": 31.4,
+          "end": 31.5,
+          "is_filler": false
+        },
+        {
+          "word": "บ",
+          "start": 31.5,
+          "end": 31.64,
+          "is_filler": false
+        },
+        {
+          "word": "้",
+          "start": 31.64,
+          "end": 31.68,
+          "is_filler": false
+        },
+        {
+          "word": "าง",
+          "start": 31.68,
+          "end": 31.76,
+          "is_filler": false
+        },
+        {
+          "word": "ว",
+          "start": 32.1,
+          "end": 32.24,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 32.24,
+          "end": 32.24,
+          "is_filler": false
+        },
+        {
+          "word": "า",
+          "start": 32.24,
+          "end": 32.24,
+          "is_filler": false
+        },
+        {
+          "word": "ผม",
+          "start": 32.24,
+          "end": 32.34,
+          "is_filler": false
+        },
+        {
+          "word": "จะ",
+          "start": 32.34,
+          "end": 32.46,
+          "is_filler": false
+        },
+        {
+          "word": "ร",
+          "start": 32.46,
+          "end": 32.56,
+          "is_filler": false
+        },
+        {
+          "word": "้",
+          "start": 32.56,
+          "end": 32.56,
+          "is_filler": false
+        },
+        {
+          "word": "อย",
+          "start": 32.56,
+          "end": 32.56,
+          "is_filler": false
+        },
+        {
+          "word": "ฟ",
+          "start": 32.56,
+          "end": 32.74,
+          "is_filler": false
+        },
+        {
+          "word": "ั",
+          "start": 32.74,
+          "end": 32.84,
+          "is_filler": false
+        },
+        {
+          "word": "ง",
+          "start": 32.84,
+          "end": 32.84,
+          "is_filler": false
+        },
+        {
+          "word": "นะ",
+          "start": 32.84,
+          "end": 33.0,
+          "is_filler": true
+        }
+      ]
+    },
+    {
+      "text": "อันนี้ก็คือ ขอเริ่มตรงที่ฟัง Software นะ",
+      "start": 33.97,
+      "end": 38.3,
+      "words": [
+        {
+          "word": "อ",
+          "start": 33.97,
+          "end": 34.21,
+          "is_filler": false
+        },
+        {
+          "word": "ั",
+          "start": 34.21,
+          "end": 34.25,
+          "is_filler": false
+        },
+        {
+          "word": "นน",
+          "start": 34.25,
+          "end": 34.25,
+          "is_filler": false
+        },
+        {
+          "word": "ี้",
+          "start": 34.25,
+          "end": 34.29,
+          "is_filler": false
+        },
+        {
+          "word": "ก",
+          "start": 34.29,
+          "end": 34.41,
+          "is_filler": false
+        },
+        {
+          "word": "็",
+          "start": 34.41,
+          "end": 34.41,
+          "is_filler": false
+        },
+        {
+          "word": "ค",
+          "start": 34.41,
+          "end": 34.57,
+          "is_filler": false
+        },
+        {
+          "word": "ื",
+          "start": 34.57,
+          "end": 34.59,
+          "is_filler": false
+        },
+        {
+          "word": "อ",
+          "start": 34.59,
+          "end": 35.33,
+          "is_filler": false
+        },
+        {
+          "word": "ข",
+          "start": 35.7,
+          "end": 35.78,
+          "is_filler": false
+        },
+        {
+          "word": "อ",
+          "start": 35.78,
+          "end": 35.82,
+          "is_filler": false
+        },
+        {
+          "word": "เร",
+          "start": 35.82,
+          "end": 35.94,
+          "is_filler": false
+        },
+        {
+          "word": "ิ",
+          "start": 35.94,
+          "end": 35.98,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 35.98,
+          "end": 36.0,
+          "is_filler": false
+        },
+        {
+          "word": "ม",
+          "start": 36.0,
+          "end": 36.0,
+          "is_filler": false
+        },
+        {
+          "word": "ต",
+          "start": 36.0,
+          "end": 36.18,
+          "is_filler": false
+        },
+        {
+          "word": "ร",
+          "start": 36.18,
+          "end": 36.2,
+          "is_filler": false
+        },
+        {
+          "word": "ง",
+          "start": 36.2,
+          "end": 36.28,
+          "is_filler": false
+        },
+        {
+          "word": "ท",
+          "start": 36.28,
+          "end": 36.56,
+          "is_filler": false
+        },
+        {
+          "word": "ี่",
+          "start": 36.56,
+          "end": 36.8,
+          "is_filler": false
+        },
+        {
+          "word": "ฟ",
+          "start": 36.8,
+          "end": 37.72,
+          "is_filler": false
+        },
+        {
+          "word": "ั",
+          "start": 37.72,
+          "end": 37.82,
+          "is_filler": false
+        },
+        {
+          "word": "ง",
+          "start": 37.82,
+          "end": 37.86,
+          "is_filler": false
+        },
+        {
+          "word": "Software",
+          "start": 37.86,
+          "end": 38.1,
+          "is_filler": false
+        },
+        {
+          "word": "นะ",
+          "start": 38.28,
+          "end": 38.3,
+          "is_filler": true
+        }
+      ]
+    },
+    {
+      "text": "ฟัง Software มันสนุกครับผมเริ่มช่วงตอนปี 1 นะ",
+      "start": 39.16,
+      "end": 43.3,
+      "words": [
+        {
+          "word": "ฟ",
+          "start": 39.16,
+          "end": 39.4,
+          "is_filler": false
+        },
+        {
+          "word": "ั",
+          "start": 39.4,
+          "end": 39.52,
+          "is_filler": false
+        },
+        {
+          "word": "ง",
+          "start": 39.52,
+          "end": 39.52,
+          "is_filler": false
+        },
+        {
+          "word": "Software",
+          "start": 39.52,
+          "end": 39.84,
+          "is_filler": false
+        },
+        {
+          "word": "ม",
+          "start": 40.46,
+          "end": 40.5,
+          "is_filler": false
+        },
+        {
+          "word": "ั",
+          "start": 40.5,
+          "end": 40.8,
+          "is_filler": false
+        },
+        {
+          "word": "น",
+          "start": 40.8,
+          "end": 40.8,
+          "is_filler": false
+        },
+        {
+          "word": "ส",
+          "start": 40.8,
+          "end": 40.9,
+          "is_filler": false
+        },
+        {
+          "word": "น",
+          "start": 40.9,
+          "end": 40.96,
+          "is_filler": false
+        },
+        {
+          "word": "ุ",
+          "start": 40.96,
+          "end": 41.04,
+          "is_filler": false
+        },
+        {
+          "word": "ก",
+          "start": 41.04,
+          "end": 41.04,
+          "is_filler": false
+        },
+        {
+          "word": "คร",
+          "start": 41.04,
+          "end": 41.2,
+          "is_filler": false
+        },
+        {
+          "word": "ั",
+          "start": 41.2,
+          "end": 41.22,
+          "is_filler": false
+        },
+        {
+          "word": "บ",
+          "start": 41.22,
+          "end": 41.22,
+          "is_filler": false
+        },
+        {
+          "word": "ผม",
+          "start": 41.22,
+          "end": 41.46,
+          "is_filler": false
+        },
+        {
+          "word": "เร",
+          "start": 41.46,
+          "end": 41.86,
+          "is_filler": false
+        },
+        {
+          "word": "ิ",
+          "start": 41.86,
+          "end": 41.9,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 41.9,
+          "end": 41.9,
+          "is_filler": false
+        },
+        {
+          "word": "ม",
+          "start": 41.9,
+          "end": 41.98,
+          "is_filler": false
+        },
+        {
+          "word": "ช",
+          "start": 41.98,
+          "end": 42.12,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 42.12,
+          "end": 42.18,
+          "is_filler": false
+        },
+        {
+          "word": "ว",
+          "start": 42.18,
+          "end": 42.18,
+          "is_filler": false
+        },
+        {
+          "word": "ง",
+          "start": 42.18,
+          "end": 42.32,
+          "is_filler": false
+        },
+        {
+          "word": "ต",
+          "start": 42.32,
+          "end": 42.48,
+          "is_filler": false
+        },
+        {
+          "word": "อน",
+          "start": 42.48,
+          "end": 42.66,
+          "is_filler": false
+        },
+        {
+          "word": "ป",
+          "start": 42.66,
+          "end": 42.98,
+          "is_filler": false
+        },
+        {
+          "word": "ี",
+          "start": 42.98,
+          "end": 43.02,
+          "is_filler": false
+        },
+        {
+          "word": "1",
+          "start": 43.02,
+          "end": 43.14,
+          "is_filler": false
+        },
+        {
+          "word": "นะ",
+          "start": 43.14,
+          "end": 43.3,
+          "is_filler": true
+        }
+      ]
+    },
+    {
+      "text": "ผมเริ่มเรียนรู้ด้วยตัวเองอยากขอดใน Udemy",
+      "start": 43.76,
+      "end": 46.14,
+      "words": [
+        {
+          "word": "ผม",
+          "start": 43.76,
+          "end": 44.0,
+          "is_filler": false
+        },
+        {
+          "word": "เร",
+          "start": 44.0,
+          "end": 44.2,
+          "is_filler": false
+        },
+        {
+          "word": "ิ",
+          "start": 44.2,
+          "end": 44.24,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 44.24,
+          "end": 44.26,
+          "is_filler": false
+        },
+        {
+          "word": "ม",
+          "start": 44.26,
+          "end": 44.34,
+          "is_filler": false
+        },
+        {
+          "word": "เร",
+          "start": 44.34,
+          "end": 44.48,
+          "is_filler": false
+        },
+        {
+          "word": "ี",
+          "start": 44.48,
+          "end": 44.54,
+          "is_filler": false
+        },
+        {
+          "word": "ย",
+          "start": 44.54,
+          "end": 44.54,
+          "is_filler": false
+        },
+        {
+          "word": "น",
+          "start": 44.54,
+          "end": 44.54,
+          "is_filler": false
+        },
+        {
+          "word": "ร",
+          "start": 44.54,
+          "end": 44.62,
+          "is_filler": false
+        },
+        {
+          "word": "ู้",
+          "start": 44.62,
+          "end": 44.62,
+          "is_filler": false
+        },
+        {
+          "word": "ด",
+          "start": 44.62,
+          "end": 44.74,
+          "is_filler": false
+        },
+        {
+          "word": "้",
+          "start": 44.74,
+          "end": 44.74,
+          "is_filler": false
+        },
+        {
+          "word": "วย",
+          "start": 44.74,
+          "end": 44.74,
+          "is_filler": false
+        },
+        {
+          "word": "ต",
+          "start": 44.74,
+          "end": 44.84,
+          "is_filler": false
+        },
+        {
+          "word": "ั",
+          "start": 44.84,
+          "end": 44.84,
+          "is_filler": false
+        },
+        {
+          "word": "ว",
+          "start": 44.84,
+          "end": 44.84,
+          "is_filler": false
+        },
+        {
+          "word": "เ",
+          "start": 44.84,
+          "end": 44.98,
+          "is_filler": false
+        },
+        {
+          "word": "อง",
+          "start": 44.98,
+          "end": 44.98,
+          "is_filler": false
+        },
+        {
+          "word": "อย",
+          "start": 44.98,
+          "end": 45.12,
+          "is_filler": false
+        },
+        {
+          "word": "าก",
+          "start": 45.12,
+          "end": 45.16,
+          "is_filler": false
+        },
+        {
+          "word": "ข",
+          "start": 45.16,
+          "end": 45.32,
+          "is_filler": false
+        },
+        {
+          "word": "อ",
+          "start": 45.32,
+          "end": 45.34,
+          "is_filler": false
+        },
+        {
+          "word": "ด",
+          "start": 45.34,
+          "end": 45.42,
+          "is_filler": false
+        },
+        {
+          "word": "ใ",
+          "start": 45.42,
+          "end": 45.56,
+          "is_filler": false
+        },
+        {
+          "word": "น",
+          "start": 45.56,
+          "end": 45.66,
+          "is_filler": false
+        },
+        {
+          "word": "U",
+          "start": 45.66,
+          "end": 45.94,
+          "is_filler": false
+        },
+        {
+          "word": "d",
+          "start": 45.94,
+          "end": 45.96,
+          "is_filler": false
+        },
+        {
+          "word": "emy",
+          "start": 45.96,
+          "end": 46.14,
+          "is_filler": false
+        }
+      ]
+    },
+    {
+      "text": "เพราะว่ามันเริ่มเดียง 9 นะ",
+      "start": 106.62,
+      "end": 108.34,
+      "words": [
+        {
+          "word": "เพ",
+          "start": 106.62,
+          "end": 106.62,
+          "is_filler": false
+        },
+        {
+          "word": "ร",
+          "start": 106.62,
+          "end": 106.72,
+          "is_filler": false
+        },
+        {
+          "word": "า",
+          "start": 106.72,
+          "end": 106.72,
+          "is_filler": false
+        },
+        {
+          "word": "ะ",
+          "start": 106.72,
+          "end": 106.76,
+          "is_filler": false
+        },
+        {
+          "word": "ว",
+          "start": 106.76,
+          "end": 106.76,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 106.76,
+          "end": 106.8,
+          "is_filler": false
+        },
+        {
+          "word": "าม",
+          "start": 106.8,
+          "end": 106.86,
+          "is_filler": false
+        },
+        {
+          "word": "ั",
+          "start": 106.86,
+          "end": 106.86,
+          "is_filler": false
+        },
+        {
+          "word": "น",
+          "start": 106.86,
+          "end": 106.9,
+          "is_filler": false
+        },
+        {
+          "word": "เร",
+          "start": 106.9,
+          "end": 107.02,
+          "is_filler": false
+        },
+        {
+          "word": "ิ",
+          "start": 107.02,
+          "end": 107.04,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 107.04,
+          "end": 107.04,
+          "is_filler": false
+        },
+        {
+          "word": "ม",
+          "start": 107.04,
+          "end": 107.12,
+          "is_filler": false
+        },
+        {
+          "word": "เด",
+          "start": 107.12,
+          "end": 107.26,
+          "is_filler": false
+        },
+        {
+          "word": "ี",
+          "start": 107.26,
+          "end": 107.28,
+          "is_filler": false
+        },
+        {
+          "word": "ย",
+          "start": 107.28,
+          "end": 107.32,
+          "is_filler": false
+        },
+        {
+          "word": "ง",
+          "start": 107.32,
+          "end": 107.34,
+          "is_filler": false
+        },
+        {
+          "word": "9",
+          "start": 107.34,
+          "end": 107.54,
+          "is_filler": false
+        },
+        {
+          "word": "นะ",
+          "start": 107.58,
+          "end": 108.34,
+          "is_filler": true
+        }
+      ]
+    },
+    {
+      "text": "ก็ทำลังคิมนี้แค่นี้ก่อน เดี๋ยวต่อไปจะพูดถึง Hardware นะ",
+      "start": 108.34,
+      "end": 111.24,
+      "words": [
+        {
+          "word": "ก",
+          "start": 108.34,
+          "end": 108.58,
+          "is_filler": false
+        },
+        {
+          "word": "็",
+          "start": 108.58,
+          "end": 108.66,
+          "is_filler": false
+        },
+        {
+          "word": "ทำ",
+          "start": 108.66,
+          "end": 109.06,
+          "is_filler": false
+        },
+        {
+          "word": "ล",
+          "start": 109.06,
+          "end": 109.1,
+          "is_filler": false
+        },
+        {
+          "word": "ั",
+          "start": 109.1,
+          "end": 109.12,
+          "is_filler": false
+        },
+        {
+          "word": "ง",
+          "start": 109.12,
+          "end": 109.12,
+          "is_filler": false
+        },
+        {
+          "word": "ค",
+          "start": 109.12,
+          "end": 109.16,
+          "is_filler": false
+        },
+        {
+          "word": "ิ",
+          "start": 109.16,
+          "end": 109.22,
+          "is_filler": false
+        },
+        {
+          "word": "ม",
+          "start": 109.22,
+          "end": 109.24,
+          "is_filler": false
+        },
+        {
+          "word": "น",
+          "start": 109.24,
+          "end": 109.3,
+          "is_filler": false
+        },
+        {
+          "word": "ี้",
+          "start": 109.3,
+          "end": 109.36,
+          "is_filler": false
+        },
+        {
+          "word": "แ",
+          "start": 109.36,
+          "end": 109.42,
+          "is_filler": false
+        },
+        {
+          "word": "ค",
+          "start": 109.42,
+          "end": 109.46,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 109.46,
+          "end": 109.5,
+          "is_filler": false
+        },
+        {
+          "word": "น",
+          "start": 109.5,
+          "end": 109.5,
+          "is_filler": false
+        },
+        {
+          "word": "ี้",
+          "start": 109.5,
+          "end": 109.58,
+          "is_filler": false
+        },
+        {
+          "word": "ก",
+          "start": 109.58,
+          "end": 109.64,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 109.64,
+          "end": 109.72,
+          "is_filler": false
+        },
+        {
+          "word": "อน",
+          "start": 109.72,
+          "end": 109.82,
+          "is_filler": false
+        },
+        {
+          "word": "เด",
+          "start": 110.02,
+          "end": 110.08,
+          "is_filler": false
+        },
+        {
+          "word": "ี",
+          "start": 110.08,
+          "end": 110.08,
+          "is_filler": false
+        },
+        {
+          "word": "๋",
+          "start": 110.08,
+          "end": 110.12,
+          "is_filler": false
+        },
+        {
+          "word": "ย",
+          "start": 110.12,
+          "end": 110.12,
+          "is_filler": false
+        },
+        {
+          "word": "ว",
+          "start": 110.12,
+          "end": 110.14,
+          "is_filler": false
+        },
+        {
+          "word": "ต",
+          "start": 110.14,
+          "end": 110.16,
+          "is_filler": false
+        },
+        {
+          "word": "่",
+          "start": 110.16,
+          "end": 110.24,
+          "is_filler": false
+        },
+        {
+          "word": "อ",
+          "start": 110.24,
+          "end": 110.24,
+          "is_filler": false
+        },
+        {
+          "word": "ไป",
+          "start": 110.24,
+          "end": 110.36,
+          "is_filler": false
+        },
+        {
+          "word": "จะ",
+          "start": 110.36,
+          "end": 110.46,
+          "is_filler": false
+        },
+        {
+          "word": "พ",
+          "start": 110.46,
+          "end": 110.52,
+          "is_filler": false
+        },
+        {
+          "word": "ู",
+          "start": 110.52,
+          "end": 110.6,
+          "is_filler": false
+        },
+        {
+          "word": "ด",
+          "start": 110.6,
+          "end": 110.64,
+          "is_filler": false
+        },
+        {
+          "word": "ถ",
+          "start": 110.64,
+          "end": 110.68,
+          "is_filler": false
+        },
+        {
+          "word": "ึ",
+          "start": 110.68,
+          "end": 110.74,
+          "is_filler": false
+        },
+        {
+          "word": "ง",
+          "start": 110.74,
+          "end": 110.8,
+          "is_filler": false
+        },
+        {
+          "word": "Hard",
+          "start": 110.8,
+          "end": 110.98,
+          "is_filler": false
+        },
+        {
+          "word": "ware",
+          "start": 110.98,
+          "end": 111.14,
+          "is_filler": false
+        },
+        {
+          "word": "นะ",
+          "start": 111.18,
+          "end": 111.24,
+          "is_filler": true
+        }
+      ]
+    }
+  ],
+  "filler_words": [
+    {
+      "word": "นะ",
+      "start": 30.16,
+      "end": 30.32
+    },
+    {
+      "word": "นะ",
+      "start": 32.84,
+      "end": 33.0
+    },
+    {
+      "word": "นะ",
+      "start": 38.28,
+      "end": 38.3
+    },
+    {
+      "word": "นะ",
+      "start": 43.14,
+      "end": 43.3
+    },
+    {
+      "word": "นะ",
+      "start": 107.58,
+      "end": 108.34
+    },
+    {
+      "word": "นะ",
+      "start": 111.18,
+      "end": 111.24
+    }
+  ],
+  "silence_gaps": [
+    {
+      "start": 5.9,
+      "end": 6.34,
+      "duration": 0.44
+    },
+    {
+      "start": 12.0,
+      "end": 12.5,
+      "duration": 0.5
+    },
+    {
+      "start": 16.0,
+      "end": 16.42,
+      "duration": 0.42
+    },
+    {
+      "start": 17.92,
+      "end": 18.4,
+      "duration": 0.48
+    },
+    {
+      "start": 22.72,
+      "end": 23.26,
+      "duration": 0.54
+    },
+    {
+      "start": 33.0,
+      "end": 33.97,
+      "duration": 0.97
+    },
+    {
+      "start": 38.3,
+      "end": 39.16,
+      "duration": 0.86
+    },
+    {
+      "start": 39.84,
+      "end": 40.46,
+      "duration": 0.62
+    },
+    {
+      "start": 43.3,
+      "end": 43.76,
+      "duration": 0.46
+    },
+    {
+      "start": 46.14,
+      "end": 106.62,
+      "duration": 60.48
+    }
+  ]
+}
