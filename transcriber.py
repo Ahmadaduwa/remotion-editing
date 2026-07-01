@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 
 TRANSCRIPT_DIR = os.environ.get("TRANSCRIPT_DIR", "/app/data/transcripts")
 WHISPER_MODE = os.environ.get("WHISPER_MODE", "gpu").lower()  # gpu | cpu | auto
-WHISPER_GPU_MODEL = os.environ.get("WHISPER_GPU_MODEL", "small")  # tiny|base|small (for 4GB VRAM use small)
+WHISPER_GPU_MODEL = os.environ.get("WHISPER_GPU_MODEL", "large-v3")
+WHISPER_CPU_MODEL = os.environ.get("WHISPER_CPU_MODEL", "large-v3")
 WHISPER_MODEL_DIR = os.environ.get("WHISPER_MODEL_DIR", "/app/data/models")
 
 # Filler words to detect and flag
@@ -31,7 +32,7 @@ _cpu_model = None
 
 
 def _get_gpu_model():
-    """Load and return the GPU Whisper model (small for 4GB VRAM)."""
+    """Load and return the GPU Whisper model."""
     global _gpu_model
     if _gpu_model is None:
         from faster_whisper import WhisperModel
@@ -48,18 +49,19 @@ def _get_gpu_model():
 
 
 def _get_cpu_model():
-    """Load and return the CPU (small) Whisper fallback model."""
+    """Load and return the CPU Whisper fallback model."""
     global _cpu_model
     if _cpu_model is None:
         from faster_whisper import WhisperModel
-        logger.info("Loading CPU Whisper model 'small' on cpu (int8)...")
+        model_name = WHISPER_CPU_MODEL
+        logger.info(f"Loading CPU Whisper model '{model_name}' on cpu (int8)...")
         _cpu_model = WhisperModel(
-            "small",
+            model_name,
             device="cpu",
             compute_type="int8",
             download_root=WHISPER_MODEL_DIR,
         )
-        logger.info("CPU Whisper model 'small' loaded successfully.")
+        logger.info(f"CPU Whisper model '{model_name}' loaded successfully.")
     return _cpu_model
 
 
@@ -88,11 +90,12 @@ def get_cached_transcript(video_path: str) -> Optional[dict]:
 
 
 def _extract_audio(video_path: str, audio_path: str) -> None:
-    """Extract audio from video file using ffmpeg."""
+    """Extract audio from video file and apply FFT noise reduction using ffmpeg."""
     cmd = [
         "ffmpeg", "-y",
         "-i", video_path,
         "-vn",                    # no video
+        "-af", "afftdn",          # FFT noise reduction
         "-acodec", "pcm_s16le",   # WAV format for whisper
         "-ar", "16000",           # 16kHz sample rate
         "-ac", "1",               # mono
@@ -100,7 +103,7 @@ def _extract_audio(video_path: str, audio_path: str) -> None:
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
     if result.returncode != 0:
-        raise RuntimeError(f"ffmpeg audio extraction failed: {result.stderr[-1000:]}")
+        raise RuntimeError(f"ffmpeg audio extraction and denoising failed: {result.stderr[-1000:]}")
 
 
 def _is_filler(word: str) -> bool:

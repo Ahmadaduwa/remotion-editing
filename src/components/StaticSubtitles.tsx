@@ -15,6 +15,9 @@ function groupIntoSentences(words: WordTimestamp[]): {
 }[] {
   if (!words || words.length === 0) return [];
 
+  const isThai = words.some(w => /[\u0e00-\u0e7f]/.test(w.word));
+  const joinStr = isThai ? "" : " ";
+
   const sentences: { text: string; start: number; end: number }[] = [];
   let currentWords: WordTimestamp[] = [];
 
@@ -31,7 +34,7 @@ function groupIntoSentences(words: WordTimestamp[]): {
 
     if (endsWithPunctuation || isLongEnough || hasGap) {
       sentences.push({
-        text: currentWords.map((w) => w.word).join(" "),
+        text: currentWords.map((w) => w.word).join(joinStr),
         start: currentWords[0].start,
         end: currentWords[currentWords.length - 1].end,
       });
@@ -42,7 +45,7 @@ function groupIntoSentences(words: WordTimestamp[]): {
   // Don't forget remaining words
   if (currentWords.length > 0) {
     sentences.push({
-      text: currentWords.map((w) => w.word).join(" "),
+      text: currentWords.map((w) => w.word).join(joinStr),
       start: currentWords[0].start,
       end: currentWords[currentWords.length - 1].end,
     });

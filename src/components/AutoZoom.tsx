@@ -28,11 +28,11 @@ export const AutoZoom: React.FC<AutoZoomProps> = ({ children, clipIndex }) => {
   let translateX = 0;
   let translateY = 0;
 
-  // Zoom scale from 1.0 to 1.15 over the duration of the clip
+  // Zoom scale from 1.0 to 1.08 over the duration of the clip
   scale = interpolate(
     frame,
     [0, durationInFrames],
-    [1.0, 1.15],
+    [1.0, 1.08],
     {
       extrapolateRight: "clamp",
       easing: Easing.inOut(Easing.ease),
@@ -44,7 +44,7 @@ export const AutoZoom: React.FC<AutoZoomProps> = ({ children, clipIndex }) => {
     translateX = interpolate(
       frame,
       [0, durationInFrames],
-      [0, 20],
+      [0, 8],
       { extrapolateRight: "clamp", easing: Easing.inOut(Easing.ease) }
     );
   } else if (zoomType === 2) {
@@ -52,7 +52,7 @@ export const AutoZoom: React.FC<AutoZoomProps> = ({ children, clipIndex }) => {
     translateX = interpolate(
       frame,
       [0, durationInFrames],
-      [0, -20],
+      [0, -8],
       { extrapolateRight: "clamp", easing: Easing.inOut(Easing.ease) }
     );
   } else if (zoomType === 3) {
@@ -60,7 +60,7 @@ export const AutoZoom: React.FC<AutoZoomProps> = ({ children, clipIndex }) => {
     translateY = interpolate(
       frame,
       [0, durationInFrames],
-      [0, -20],
+      [0, -8],
       { extrapolateRight: "clamp", easing: Easing.inOut(Easing.ease) }
     );
   } else {
@@ -68,7 +68,7 @@ export const AutoZoom: React.FC<AutoZoomProps> = ({ children, clipIndex }) => {
     translateY = interpolate(
       frame,
       [0, durationInFrames],
-      [0, 20],
+      [0, 8],
       { extrapolateRight: "clamp", easing: Easing.inOut(Easing.ease) }
     );
   }

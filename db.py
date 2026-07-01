@@ -53,37 +53,56 @@ CREATE INDEX IF NOT EXISTS idx_jobs_input_path ON jobs(input_path);
 CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
 """
 
+_db: Optional[aiosqlite.Connection] = None
+
 
 def _now() -> str:
     """Return current UTC time as ISO-8601 string."""
     return datetime.now(timezone.utc).isoformat()
 
 
+async def get_db() -> aiosqlite.Connection:
+    """Retrieve the global persistent database connection, initializing if needed."""
+    global _db
+    if _db is None:
+        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+        _db = await aiosqlite.connect(DB_PATH)
+        _db.row_factory = aiosqlite.Row
+    return _db
+
+
+async def close_db() -> None:
+    """Release global database connection resources."""
+    global _db
+    if _db is not None:
+        await _db.close()
+        _db = None
+
+
 async def init_db() -> None:
     """Create database tables if they don't exist and run migrations."""
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.executescript(SCHEMA_SQL)
-        # Migrate existing db to add 'backend' if missing
-        try:
-            await db.execute("SELECT backend FROM jobs LIMIT 1")
-        except aiosqlite.OperationalError:
-            await db.execute("ALTER TABLE jobs ADD COLUMN backend TEXT")
-            await db.commit()
-            
-        # Migrate projects to add subtitle_style_json if missing
-        try:
-            await db.execute("SELECT subtitle_style_json FROM projects LIMIT 1")
-        except aiosqlite.OperationalError:
-            await db.execute("ALTER TABLE projects ADD COLUMN subtitle_style_json TEXT")
-            await db.commit()
+    db = await get_db()
+    await db.executescript(SCHEMA_SQL)
+    # Migrate existing db to add 'backend' if missing
+    try:
+        await db.execute("SELECT backend FROM jobs LIMIT 1")
+    except aiosqlite.OperationalError:
+        await db.execute("ALTER TABLE jobs ADD COLUMN backend TEXT")
+        await db.commit()
+        
+    # Migrate projects to add subtitle_style_json if missing
+    try:
+        await db.execute("SELECT subtitle_style_json FROM projects LIMIT 1")
+    except aiosqlite.OperationalError:
+        await db.execute("ALTER TABLE projects ADD COLUMN subtitle_style_json TEXT")
+        await db.commit()
 
-        # Migrate projects to add bgm_settings_json if missing
-        try:
-            await db.execute("SELECT bgm_settings_json FROM projects LIMIT 1")
-        except aiosqlite.OperationalError:
-            await db.execute("ALTER TABLE projects ADD COLUMN bgm_settings_json TEXT")
-            await db.commit()
+    # Migrate projects to add bgm_settings_json if missing
+    try:
+        await db.execute("SELECT bgm_settings_json FROM projects LIMIT 1")
+    except aiosqlite.OperationalError:
+        await db.execute("ALTER TABLE projects ADD COLUMN bgm_settings_json TEXT")
+        await db.commit()
 
 
 async def create_job(
@@ -95,14 +114,14 @@ async def create_job(
     """Insert a new job record with status='queued'. Returns the job dict."""
     now = _now()
     params_json = json.dumps(params, ensure_ascii=False)
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            """INSERT INTO jobs
-               (task_id, status, created_at, updated_at, input_path, output_path, params_json, progress_percent, backend)
-               VALUES (?, 'queued', ?, ?, ?, ?, ?, 0, NULL)""",
-            (task_id, now, now, input_path, output_path, params_json),
-        )
-        await db.commit()
+    db = await get_db()
+    await db.execute(
+        """INSERT INTO jobs
+           (task_id, status, created_at, updated_at, input_path, output_path, params_json, progress_percent, backend)
+           VALUES (?, 'queued', ?, ?, ?, ?, ?, 0, NULL)""",
+        (task_id, now, now, input_path, output_path, params_json),
+    )
+    await db.commit()
     return {
         "task_id": task_id,
         "status": "queued",
@@ -119,13 +138,12 @@ async def create_job(
 
 async def get_job(task_id: str) -> Optional[dict]:
     """Fetch a single job by task_id. Returns None if not found."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        cursor = await db.execute("SELECT * FROM jobs WHERE task_id = ?", (task_id,))
-        row = await cursor.fetchone()
-        if row is None:
-            return None
-        return _row_to_dict(row)
+    db = await get_db()
+    cursor = await db.execute("SELECT * FROM jobs WHERE task_id = ?", (task_id,))
+    row = await cursor.fetchone()
+    if row is None:
+        return None
+    return _row_to_dict(row)
 
 
 async def update_job(
@@ -160,47 +178,45 @@ async def update_job(
     vals.append(_now())
     vals.append(task_id)
     sql = f"UPDATE jobs SET {', '.join(sets)} WHERE task_id = ?"
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(sql, vals)
-        await db.commit()
+    db = await get_db()
+    await db.execute(sql, vals)
+    await db.commit()
 
 
 async def list_jobs_by_status(status: str) -> list[dict]:
     """Return all jobs with the given status, ordered by created_at."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        cursor = await db.execute(
-            "SELECT * FROM jobs WHERE status = ? ORDER BY created_at",
-            (status,),
-        )
-        rows = await cursor.fetchall()
-        return [_row_to_dict(r) for r in rows]
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT * FROM jobs WHERE status = ? ORDER BY created_at",
+        (status,),
+    )
+    rows = await cursor.fetchall()
+    return [_row_to_dict(r) for r in rows]
 
 
 async def count_jobs_by_status() -> dict[str, int]:
     """Return a dict of {status: count} for all statuses."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        cursor = await db.execute(
-            "SELECT status, COUNT(*) as cnt FROM jobs GROUP BY status"
-        )
-        rows = await cursor.fetchall()
-        return {row[0]: row[1] for row in rows}
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT status, COUNT(*) as cnt FROM jobs GROUP BY status"
+    )
+    rows = await cursor.fetchall()
+    return {row[0]: row[1] for row in rows}
 
 
 async def find_completed_job_by_output(output_path: str) -> Optional[dict]:
     """Find the most recent completed job that wrote to the given output_path."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        cursor = await db.execute(
-            """SELECT * FROM jobs
-               WHERE status = 'completed' AND output_path = ?
-               ORDER BY updated_at DESC LIMIT 1""",
-            (output_path,),
-        )
-        row = await cursor.fetchone()
-        if row is None:
-            return None
-        return _row_to_dict(row)
+    db = await get_db()
+    cursor = await db.execute(
+        """SELECT * FROM jobs
+           WHERE status = 'completed' AND output_path = ?
+           ORDER BY updated_at DESC LIMIT 1""",
+        (output_path,),
+    )
+    row = await cursor.fetchone()
+    if row is None:
+        return None
+    return _row_to_dict(row)
 
 
 async def log_deletion(
@@ -210,27 +226,27 @@ async def log_deletion(
     reason: str = "same-output deduplication",
 ) -> None:
     """Record a file deletion in the audit log."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            """INSERT INTO deletion_log
-               (deleted_at, old_output_path, old_task_id, replaced_by_task_id, reason)
-               VALUES (?, ?, ?, ?, ?)""",
-            (_now(), old_output_path, old_task_id, replaced_by_task_id, reason),
-        )
-        await db.commit()
+    db = await get_db()
+    await db.execute(
+        """INSERT INTO deletion_log
+           (deleted_at, old_output_path, old_task_id, replaced_by_task_id, reason)
+           VALUES (?, ?, ?, ?, ?)""",
+        (_now(), old_output_path, old_task_id, replaced_by_task_id, reason),
+    )
+    await db.commit()
 
 
 async def requeue_stuck_jobs() -> int:
     """Reset any jobs stuck in 'processing' (from a crash) back to 'queued'.
     Returns the number of requeued jobs."""
     now = _now()
-    async with aiosqlite.connect(DB_PATH) as db:
-        cursor = await db.execute(
-            "UPDATE jobs SET status = 'queued', updated_at = ?, progress_percent = 0 WHERE status = 'processing'",
-            (now,),
-        )
-        await db.commit()
-        return cursor.rowcount
+    db = await get_db()
+    cursor = await db.execute(
+        "UPDATE jobs SET status = 'queued', updated_at = ?, progress_percent = 0 WHERE status = 'processing'",
+        (now,),
+    )
+    await db.commit()
+    return cursor.rowcount
 
 
 def _row_to_dict(row) -> dict:
@@ -248,14 +264,14 @@ def _row_to_dict(row) -> dict:
 
 async def create_project(project_id: str, video_name: str) -> dict:
     now = _now()
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            """INSERT INTO projects
-               (project_id, video_name, status, raw_transcript_json, corrected_text, aligned_transcript_json, overlays_json, subtitle_style_json, bgm_settings_json, created_at, updated_at)
-               VALUES (?, ?, 'uploaded', NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)""",
-            (project_id, video_name, now, now),
-        )
-        await db.commit()
+    db = await get_db()
+    await db.execute(
+        """INSERT INTO projects
+           (project_id, video_name, status, raw_transcript_json, corrected_text, aligned_transcript_json, overlays_json, subtitle_style_json, bgm_settings_json, created_at, updated_at)
+           VALUES (?, ?, 'uploaded', NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)""",
+        (project_id, video_name, now, now),
+    )
+    await db.commit()
     return {
         "project_id": project_id,
         "video_name": video_name,
@@ -272,13 +288,12 @@ async def create_project(project_id: str, video_name: str) -> dict:
 
 
 async def get_project(project_id: str) -> Optional[dict]:
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        cursor = await db.execute("SELECT * FROM projects WHERE project_id = ?", (project_id,))
-        row = await cursor.fetchone()
-        if row is None:
-            return None
-        return _project_row_to_dict(row)
+    db = await get_db()
+    cursor = await db.execute("SELECT * FROM projects WHERE project_id = ?", (project_id,))
+    row = await cursor.fetchone()
+    if row is None:
+        return None
+    return _project_row_to_dict(row)
 
 
 async def update_project(
@@ -321,17 +336,23 @@ async def update_project(
     vals.append(_now())
     vals.append(project_id)
     sql = f"UPDATE projects SET {', '.join(sets)} WHERE project_id = ?"
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(sql, vals)
-        await db.commit()
+    db = await get_db()
+    await db.execute(sql, vals)
+    await db.commit()
 
 
 async def list_projects() -> list[dict]:
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        cursor = await db.execute("SELECT * FROM projects ORDER BY created_at DESC")
-        rows = await cursor.fetchall()
-        return [_project_row_to_dict(r) for r in rows]
+    db = await get_db()
+    cursor = await db.execute("SELECT * FROM projects ORDER BY created_at DESC")
+    rows = await cursor.fetchall()
+    return [_project_row_to_dict(r) for r in rows]
+
+
+async def delete_project(project_id: str) -> bool:
+    db = await get_db()
+    cursor = await db.execute("DELETE FROM projects WHERE project_id = ?", (project_id,))
+    await db.commit()
+    return cursor.rowcount > 0
 
 
 def _project_row_to_dict(row) -> dict:
@@ -347,3 +368,4 @@ def _project_row_to_dict(row) -> dict:
             d[key] = None
         d.pop(field, None)
     return d
+

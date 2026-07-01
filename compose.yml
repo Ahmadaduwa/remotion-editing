@@ -3,11 +3,10 @@ services:
     build: .
     container_name: remotion-render
     restart: unless-stopped
-    ports:
-      - "0.0.0.0:8000:8000"
+    network_mode: host
     environment:
-      - OLLAMA_URL=http://100.119.233.96:11434
-      - OLLAMA_MODEL=qwen2.5:7b
+      - OLLAMA_URL=http://100.124.101.126:11434
+      - OLLAMA_MODEL=qwen3.5:2b
       - WHISPER_MODE=cpu
       - MAX_CONCURRENT_RENDERS=1
     volumes:
@@ -16,6 +15,12 @@ services:
       - /home/aduwa/projects/editing/remotion-blank/data:/app/data
       - /home/aduwa/projects/editing/remotion-blank/assets:/app/assets
       - /home/aduwa/projects/editing/remotion-blank/public:/app/public
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     deploy:
       resources:
         limits:

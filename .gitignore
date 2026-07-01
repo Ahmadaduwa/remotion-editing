@@ -1,0 +1,9 @@
+node_modules
+data
+output
+*.db
+*.mp4
+*.MOV
+.env*
+build
+dist

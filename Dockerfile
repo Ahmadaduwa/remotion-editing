@@ -34,7 +34,7 @@ COPY src/ ./src/
 COPY public/ ./public/
 COPY *.py ./
 
-RUN pip3 install fastapi uvicorn aiosqlite faster-whisper pythainlp python-multipart --break-system-packages
+RUN pip3 install fastapi uvicorn aiosqlite faster-whisper pythainlp python-multipart opencv-python-headless mediapipe --break-system-packages
 
 RUN usermod -u 1000 node && groupmod -g 1000 node 2>/dev/null
 RUN mkdir -p /app/data /app/assets /app/public /app/input /app/output && chown -R node:node /app /home/aduwa 2>/dev/null || true

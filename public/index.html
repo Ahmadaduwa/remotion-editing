@@ -18,10 +18,10 @@
                 <h1>Remotion Pipeline <span>Thai Fixed + AI SFX</span></h1>
             </div>
             <div class="project-selector-area">
-                <label for="project-select">Project: </label>
-                <select id="project-select">
-                    <option value="">-- Create New Project --</option>
-                </select>
+                <label>Project:</label>
+                <select id="project-select" style="display:none;"></select>
+                <span id="header-project-label" class="header-project-label">-- No Project --</span>
+                <button class="btn btn-outline btn-small" onclick="goToStep(1)">Change</button>
             </div>
         </header>
 
@@ -84,7 +84,21 @@
                 </div>
             </section>
 
+            <!-- STEP 1: PROJECTS PANEL (shown alongside step-pane-1) -->
+            <div id="projects-panel" style="display:none;">
+                <div class="card pane-card" style="margin-top: 20px;">
+                    <div class="card-header-actions">
+                        <h2>Saved Projects</h2>
+                        <span class="subtitle" style="font-size:13px; color: var(--text-secondary);">Select a project to continue editing, or start fresh above.</span>
+                    </div>
+                    <div id="projects-list-grid" class="projects-list-grid">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- STEP 2: TRANSCRIPTION -->
+
             <section id="step-pane-2" class="step-pane">
                 <div class="card pane-card text-center">
                     <h2>AI Transcription & Auto-Fixes</h2>
@@ -166,6 +180,14 @@
                             </div>
                         </div>
                         <p class="subtitle">AI suggestions for pop-up words (text) and sound effects (SFX) to add excitement.</p>
+                        
+                        <!-- Visual Overlays Timeline -->
+                        <div class="timeline-container-outer" style="margin-bottom: 20px;">
+                            <div class="timeline-ruler" id="overlay-timeline-ruler"></div>
+                            <div class="timeline-scroll-container">
+                                <div class="timeline-tracks-area" id="overlay-timeline-tracks-area" style="position: relative; height: 90px; min-height: 90px; background: rgba(0,0,0,0.2); border-radius: 6px; overflow: hidden;"></div>
+                            </div>
+                        </div>
                         
                         <div class="overlay-timeline-table-container">
                             <table class="overlay-table">
@@ -304,6 +326,10 @@
                                 <input type="checkbox" id="render-auto-zoom" checked>
                                 <span>Apply Auto Ken-Burns camera zoom</span>
                             </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="render-smart-crop" checked>
+                                <span>Enable Smart Face-Tracking (Portrait Mode)</span>
+                            </label>
                         </div>
 
                         <!-- Subtitle Styling Customizer (Feature 3) -->
@@ -425,6 +451,19 @@
             </section>
 
         </main>
+    </div>
+
+    <!-- Custom Confirm Modal -->
+    <div id="confirm-modal" class="confirm-modal-overlay" style="display:none;">
+        <div class="confirm-modal-box">
+            <div class="confirm-modal-icon">🗑️</div>
+            <h3 class="confirm-modal-title" id="confirm-modal-title">ยืนยันการลบ</h3>
+            <p class="confirm-modal-message" id="confirm-modal-message"></p>
+            <div class="confirm-modal-actions">
+                <button type="button" class="btn btn-outline" id="confirm-modal-cancel">ยกเลิก</button>
+                <button type="button" class="btn btn-danger" id="confirm-modal-ok">ลบ</button>
+            </div>
+        </div>
     </div>
     
     <script src="app.js"></script>

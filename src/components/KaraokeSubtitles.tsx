@@ -83,6 +83,8 @@ export const KaraokeSubtitles: React.FC<KaraokeSubtitlesProps> = ({
     backdropFilter: "blur(8px)",
   } : {};
 
+  const isThai = subtitles.some(w => /[\u0e00-\u0e7f]/.test(w.word));
+
   return (
     <div
       style={{
@@ -102,7 +104,7 @@ export const KaraokeSubtitles: React.FC<KaraokeSubtitlesProps> = ({
           display: "flex",
           flexWrap: "wrap",
           justifyContent: "center",
-          gap: "6px 10px",
+          gap: isThai ? "6px 0px" : "6px 10px",
           ...cardStyle,
         }}
       >

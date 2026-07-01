@@ -13,6 +13,57 @@ let state = {
     transcribePollInterval: null
 };
 
+// ─── Toast System ───
+function showToast(message, type = 'info') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+        <span class="toast-message">${message}</span>
+        <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+    `;
+    container.appendChild(toast);
+    setTimeout(() => toast.classList.add('show'), 50);
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 400);
+    }, 4000);
+}
+
+// ─── Custom Confirm Modal ───
+function showConfirmModal(message) {
+    return new Promise((resolve) => {
+        const overlay = document.getElementById('confirm-modal');
+        const msgEl   = document.getElementById('confirm-modal-message');
+        const okBtn   = document.getElementById('confirm-modal-ok');
+        const cancelBtn = document.getElementById('confirm-modal-cancel');
+        if (!overlay) { resolve(false); return; }
+
+        msgEl.textContent = message;
+        overlay.style.display = 'flex';
+
+        function cleanup(result) {
+            overlay.style.display = 'none';
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+            overlay.removeEventListener('click', onOverlayClick);
+            resolve(result);
+        }
+        function onOk()          { cleanup(true);  }
+        function onCancel()      { cleanup(false); }
+        function onOverlayClick(e) { if (e.target === overlay) cleanup(false); }
+
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+        overlay.addEventListener('click', onOverlayClick);
+    });
+}
+
 // ─── Live Preview and Visual Timeline Globals ───
 let livePreviewLoopId = null;
 let triggeredSFX = new Set();
@@ -23,6 +74,7 @@ let activeDragSegmentIdx = null;
 let dragStartX = 0;
 let dragStartVal = 0;
 const PIXELS_PER_SECOND = 40; // 1 second = 40px
+let previewBGMAudio = null; // Background Music preview instance
 
 function getVideoSrcUrl(videoName) {
     if (!videoName) return '';
@@ -47,6 +99,77 @@ function startLivePreviewLoop(videoElement, overlayElement) {
 
         // Render captions overlay
         renderLiveCaptions(currentTime, overlayElement);
+
+        // Dynamic Background Music (BGM) Preview with Auto-Ducking
+        const bgmTrack = document.getElementById('bgm-track')?.value;
+        const bgmVolume = parseFloat(document.getElementById('bgm-volume')?.value || "0.15");
+        const enableDucking = document.getElementById('bgm-enable-ducking')?.checked;
+
+        if (bgmTrack) {
+            // Load BGM if not loaded or if track changed
+            if (!previewBGMAudio) {
+                previewBGMAudio = new Audio(bgmTrack);
+                previewBGMAudio.loop = true;
+            } else if (previewBGMAudio.src !== window.location.origin + '/' + bgmTrack && !previewBGMAudio.src.endsWith(bgmTrack)) {
+                previewBGMAudio.pause();
+                previewBGMAudio = new Audio(bgmTrack);
+                previewBGMAudio.loop = true;
+            }
+
+            if (isPlaying) {
+                if (previewBGMAudio.paused) {
+                    previewBGMAudio.currentTime = currentTime % (previewBGMAudio.duration || 1);
+                    previewBGMAudio.play().catch(e => console.log("BGM playback blocked by browser policy"));
+                } else {
+                    // Periodic drift check & synchronization
+                    const expectedTime = currentTime % (previewBGMAudio.duration || 1);
+                    if (Math.abs(previewBGMAudio.currentTime - expectedTime) > 0.3) {
+                        previewBGMAudio.currentTime = expectedTime;
+                    }
+                }
+
+                // Auto-Ducking volume calculation
+                let targetVol = bgmVolume;
+                if (enableDucking && state.selectedProject) {
+                    const proj = state.selectedProject;
+                    const transcript = proj.aligned_transcript || proj.raw_transcript;
+                    if (transcript && transcript.segments) {
+                        let minDistance = 9999.0;
+                        for (const seg of transcript.segments) {
+                            if (seg.words) {
+                                for (const w of seg.words) {
+                                    if (currentTime >= w.start && currentTime <= w.end) {
+                                        minDistance = 0.0;
+                                        break;
+                                    }
+                                    const distStart = Math.abs(currentTime - w.start);
+                                    const distEnd = Math.abs(currentTime - w.end);
+                                    minDistance = Math.min(minDistance, distStart, distEnd);
+                                }
+                            }
+                            if (minDistance === 0.0) break;
+                        }
+
+                        if (minDistance === 0.0) {
+                            targetVol = bgmVolume * 0.15; // Duck to 15%
+                        } else if (minDistance < 0.5) {
+                            const ratio = minDistance / 0.5;
+                            targetVol = bgmVolume * (0.15 + 0.85 * ratio); // Smooth transition
+                        }
+                    }
+                }
+                previewBGMAudio.volume = targetVol;
+            } else {
+                if (!previewBGMAudio.paused) {
+                    previewBGMAudio.pause();
+                }
+            }
+        } else {
+            if (previewBGMAudio) {
+                previewBGMAudio.pause();
+                previewBGMAudio = null;
+            }
+        }
 
         // Play active SFX triggers (only if playing)
         if (isPlaying) {
@@ -83,6 +206,10 @@ function stopLivePreviewLoop() {
     if (livePreviewLoopId) {
         cancelAnimationFrame(livePreviewLoopId);
         livePreviewLoopId = null;
+    }
+    if (previewBGMAudio) {
+        previewBGMAudio.pause();
+        previewBGMAudio = null;
     }
 }
 
@@ -461,6 +588,12 @@ function goToStep(stepNum) {
     stepPanes.forEach(pane => pane.classList.remove('active'));
     document.getElementById(`step-pane-${stepNum}`).classList.add('active');
 
+    // Show projects panel only on step 1
+    const projectsPanel = document.getElementById('projects-panel');
+    if (projectsPanel) {
+        projectsPanel.style.display = (stepNum === 1 && state.projects.length > 0) ? 'block' : 'none';
+    }
+
     // Run pane-specific loader
     onEnterStep(stepNum);
 }
@@ -538,6 +671,13 @@ async function loadProjects() {
         const response = await fetch(`${API_BASE}/v1/projects`);
         state.projects = await response.json();
         renderProjectsSelect();
+        // If we're on step 1, show the projects panel
+        if (state.currentStep === 1) {
+            const projectsPanel = document.getElementById('projects-panel');
+            if (projectsPanel) {
+                projectsPanel.style.display = state.projects.length > 0 ? 'block' : 'none';
+            }
+        }
     } catch (e) {
         console.error("Failed to load projects", e);
     }
@@ -579,18 +719,131 @@ function renderVideosList() {
 }
 
 function renderProjectsSelect() {
-    // Keep first option
+    // Keep hidden select for internal JS compatibility (backward compat for other listeners)
     projectSelect.innerHTML = '<option value="">-- Create New Project --</option>';
     state.projects.forEach(p => {
         const opt = document.createElement('option');
         opt.value = p.project_id;
-        opt.text = `${p.video_name} (${p.status}) - ${new Date(p.created_at).toLocaleDateString()}`;
+        opt.text = `${p.video_name} (${p.status})`;
         if (state.selectedProject && state.selectedProject.project_id === p.project_id) {
             opt.selected = true;
         }
         projectSelect.appendChild(opt);
     });
+    renderProjectsList();
 }
+
+function renderProjectsList() {
+    const panel = document.getElementById('projects-panel');
+    const grid = document.getElementById('projects-list-grid');
+    const headerLabel = document.getElementById('header-project-label');
+    if (!panel || !grid) return;
+
+    // Update header label
+    if (headerLabel) {
+        if (state.selectedProject) {
+            headerLabel.textContent = `${state.selectedProject.video_name} (${state.selectedProject.status})`;
+        } else {
+            headerLabel.textContent = '-- No Project --';
+        }
+    }
+
+    if (state.projects.length === 0) {
+        panel.style.display = 'none';
+        return;
+    }
+
+    panel.style.display = 'block';
+
+    const STATUS_COLORS = {
+        'uploaded': '#3b82f6',
+        'transcribing': '#f59e0b',
+        'transcribed': '#10b981',
+        'ready': '#8b5cf6',
+        'rendering': '#f59e0b',
+        'completed': '#10b981',
+        'error': '#ef4444'
+    };
+
+    grid.innerHTML = '';
+    state.projects.forEach(p => {
+        const isSelected = state.selectedProject && state.selectedProject.project_id === p.project_id;
+        const statusColor = STATUS_COLORS[p.status] || '#9ca3af';
+        const date = new Date(p.created_at).toLocaleString();
+
+        const card = document.createElement('div');
+        card.className = 'project-card' + (isSelected ? ' selected' : '');
+        card.innerHTML = `
+            <div class="project-card-info">
+                <div class="project-card-name">${p.video_name}</div>
+                <div class="project-card-meta">
+                    <span class="project-status-badge" style="background: ${statusColor}22; color: ${statusColor}; border: 1px solid ${statusColor}44;">${p.status}</span>
+                    <span class="project-card-date">${date}</span>
+                </div>
+            </div>
+            <div class="project-card-actions">
+                <button type="button" class="btn btn-outline btn-small project-load-btn" data-pid="${p.project_id}">
+                    ${isSelected ? '✓ Active' : 'Load'}
+                </button>
+                <button type="button" class="btn btn-danger btn-small project-delete-btn" data-pid="${p.project_id}" title="Delete project">
+                    🗑
+                </button>
+            </div>
+        `;
+
+        // Load button
+        card.querySelector('.project-load-btn').addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (isSelected) return;
+            try {
+                const resp = await fetch(`${API_BASE}/v1/projects/${p.project_id}`);
+                const proj = await resp.json();
+                state.selectedProject = proj;
+                populateSettingsForm();
+                state.selectedVideo = { filename: proj.video_name, source_type: 'input' };
+                renderProjectsList();
+
+                if (proj.status === 'uploaded') {
+                    goToStep(2);
+                } else if (proj.status === 'transcribing') {
+                    goToStep(2);
+                    pollProjectTranscription();
+                } else if (proj.status === 'transcribed') {
+                    goToStep(3);
+                } else if (['ready', 'rendering', 'completed'].includes(proj.status)) {
+                    state.overlays = proj.overlays || [];
+                    goToStep(4);
+                }
+            } catch (err) {
+                showToast("Error loading project: " + err.message, "error");
+            }
+        });
+
+        // Delete button
+        card.querySelector('.project-delete-btn').addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const confirmed = await showConfirmModal(`ลบโปรเจกต์ "${p.video_name}"?\nการลบจะไม่สามารถกู้คืนได้`);
+            if (!confirmed) return;
+            try {
+                const resp = await fetch(`${API_BASE}/v1/projects/${p.project_id}`, { method: 'DELETE' });
+                if (!resp.ok) throw new Error(await resp.text());
+                showToast(`Project "${p.video_name}" deleted.`, 'info');
+                // If we deleted the active project, reset state
+                if (state.selectedProject && state.selectedProject.project_id === p.project_id) {
+                    state.selectedProject = null;
+                    state.selectedVideo = null;
+                }
+                await loadProjects();
+            } catch (err) {
+                showToast("Error deleting project: " + err.message, "error");
+            }
+        });
+
+        grid.appendChild(card);
+    });
+}
+
 
 projectSelect.addEventListener('change', async (e) => {
     const pid = e.target.value;
@@ -620,7 +873,7 @@ projectSelect.addEventListener('change', async (e) => {
                 goToStep(4);
             }
         } catch (err) {
-            alert("Error loading project: " + err.message);
+            showToast("Error loading project: " + err.message, "error");
         }
     } else {
         state.selectedProject = null;
@@ -647,7 +900,7 @@ async function selectVideo(video) {
         // Transition to step 2 (transcription)
         goToStep(2);
     } catch (e) {
-        alert("Failed to initialize project: " + e.message);
+        showToast("Failed to initialize project: " + e.message, "error");
     }
 }
 
@@ -705,13 +958,13 @@ function uploadFile(file) {
                 selectVideo(matchingVideo);
             }
         } else {
-            alert('Upload failed: ' + xhr.responseText);
+            showToast('Upload failed: ' + xhr.responseText, "error");
             uploadProgressContainer.style.display = 'none';
         }
     });
     
     xhr.addEventListener('error', () => {
-        alert('Upload failed due to connection error');
+        showToast('Upload failed due to connection error', "error");
         uploadProgressContainer.style.display = 'none';
     });
     
@@ -766,7 +1019,7 @@ startTranscriptionBtn.addEventListener('click', async () => {
         updateTranscriptionStageUI();
         pollProjectTranscription();
     } catch (e) {
-        alert("Failed to start transcription: " + e.message);
+        showToast("Failed to start transcription: " + e.message, "error");
     }
 });
 
@@ -867,7 +1120,7 @@ applySubtitleEditsBtn.addEventListener('click', async () => {
         loadProjects();
         goToStep(4);
     } catch (e) {
-        alert("Failed to apply edits: " + e.message);
+        showToast("Failed to apply edits: " + e.message, "error");
         applySubtitleEditsBtn.innerText = 'Apply Subtitle Edits';
     }
 });
@@ -909,14 +1162,14 @@ suggestOverlaysBtn.addEventListener('click', async () => {
         
         suggestOverlaysBtn.innerText = 'Suggest Overlays (AI)';
     } catch (e) {
-        alert("Failed to fetch AI suggestions: " + e.message);
+        showToast("Failed to fetch AI suggestions: " + e.message, "error");
         suggestOverlaysBtn.innerText = 'Suggest Overlays (AI)';
     }
 });
 
 downloadOverlaysBtn.addEventListener('click', () => {
     if (state.overlays.length === 0) {
-        alert("No overlays to download.");
+        showToast("No overlays to download.", "error");
         return;
     }
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.overlays, null, 2));
@@ -933,6 +1186,8 @@ function renderOverlaysTable() {
     
     if (state.overlays.length === 0) {
         overlaysListTbody.innerHTML = '<tr><td colspan="6" class="text-center subtitle">No text or SFX overlays defined. Click AI Suggest!</td></tr>';
+        const container = document.getElementById('overlay-timeline-tracks-area');
+        if (container) container.innerHTML = '';
         return;
     }
     
@@ -942,6 +1197,9 @@ function renderOverlaysTable() {
     state.overlays.forEach((o, index) => {
         const tr = document.createElement('tr');
         tr.className = 'overlay-row';
+        if (state.activeOverlayIndex === index) {
+            tr.classList.add('selected');
+        }
         
         const isText = o.type === 'text';
         const typeBadge = `<span class="overlay-badge ${o.type}">${o.type}</span>`;
@@ -962,6 +1220,59 @@ function renderOverlaysTable() {
             </td>
         `;
         overlaysListTbody.appendChild(tr);
+    });
+
+    renderVisualOverlaysTimeline();
+}
+
+function renderVisualOverlaysTimeline() {
+    const container = document.getElementById('overlay-timeline-tracks-area');
+    const ruler = document.getElementById('overlay-timeline-ruler');
+    if (!container || !ruler || !state.selectedProject) return;
+
+    const duration = (state.selectedProject.raw_transcript && state.selectedProject.raw_transcript.duration) || 30.0;
+    const timelineWidth = duration * PIXELS_PER_SECOND;
+    container.style.width = `${timelineWidth}px`;
+    ruler.style.width = `${timelineWidth}px`;
+
+    // Render ticks
+    ruler.innerHTML = '';
+    for (let s = 0; s <= duration; s += 2) {
+        const tick = document.createElement('div');
+        tick.className = 'ruler-tick';
+        tick.style.left = `${s * PIXELS_PER_SECOND}px`;
+        tick.innerHTML = `<span class="tick-label">${s}s</span>`;
+        ruler.appendChild(tick);
+    }
+
+    container.innerHTML = '';
+
+    // Render track visual elements
+    state.overlays.forEach((o, index) => {
+        const block = document.createElement('div');
+        block.className = `timeline-overlay-block timeline-overlay-${o.type}`;
+        if (state.activeOverlayIndex === index) {
+            block.classList.add('active');
+        }
+
+        const isText = o.type === 'text';
+        const startSec = o.start;
+        const endSec = isText ? (o.end !== -1 ? o.end : duration) : (o.start + 1.5);
+        const widthSec = Math.max(0.3, endSec - startSec);
+
+        block.style.left = `${startSec * PIXELS_PER_SECOND}px`;
+        block.style.width = `${widthSec * PIXELS_PER_SECOND}px`;
+        block.style.top = isText ? '8px' : '48px';
+
+        const label = isText ? `Text: "${o.content}"` : `🔊 ${o.asset.split('/').pop()}`;
+        block.innerText = label;
+        block.title = `${o.type} overlay at ${o.start.toFixed(1)}s`;
+
+        block.addEventListener('click', () => {
+            editOverlay(index);
+        });
+
+        container.appendChild(block);
     });
 }
 
@@ -985,6 +1296,7 @@ addOverlayBtn.addEventListener('click', () => {
     formOverlayType.dispatchEvent(new Event('change'));
     saveOverlayBtn.innerText = 'Add Overlay';
     overlayEditCard.querySelector('h3').innerText = 'Add Overlay';
+    renderVisualOverlaysTimeline();
 });
 
 function editOverlay(idx) {
@@ -1007,6 +1319,7 @@ function editOverlay(idx) {
     
     saveOverlayBtn.innerText = 'Update Overlay';
     overlayEditCard.querySelector('h3').innerText = 'Edit Overlay';
+    renderVisualOverlaysTimeline();
 }
 
 function deleteOverlay(idx) {
@@ -1129,7 +1442,7 @@ function deleteRangeCut(index) {
         state.clipRanges.splice(index, 1);
         renderRangeCuts();
     } else {
-        alert("You must have at least one cut segment.");
+        showToast("You must have at least one cut segment.", "error");
     }
 }
 
@@ -1141,6 +1454,7 @@ triggerRenderBtn.addEventListener('click', async () => {
     const subtitle_style = document.getElementById('render-subtitle-style').value;
     const trim_silence = document.getElementById('render-trim-silence').checked;
     const auto_zoom = document.getElementById('render-auto-zoom').checked;
+    const smart_crop = document.getElementById('render-smart-crop').checked;
     
     const subtitle_style_settings = {
         fontFamily: document.getElementById('style-font-family').value,
@@ -1166,6 +1480,7 @@ triggerRenderBtn.addEventListener('click', async () => {
         bgm_settings,
         trim_silence,
         auto_zoom,
+        smart_crop,
         overlays: state.overlays,
         clip_ranges: state.clipRanges
     };
@@ -1190,7 +1505,7 @@ triggerRenderBtn.addEventListener('click', async () => {
         
         pollRenderJob(job.task_id);
     } catch (e) {
-        alert("Rendering job failed to start: " + e.message);
+        showToast("Rendering job failed to start: " + e.message, "error");
         triggerRenderBtn.disabled = false;
         triggerRenderBtn.innerText = 'Render Final Video';
     }

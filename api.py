@@ -1,10 +1,7 @@
-"""
-Production-grade video auto-editing API for Hermes Agent.
-All renders are async — POST /v1/jobs returns instantly, worker processes in background.
-"""
 import asyncio
 import json
 import logging
+import logging.handlers
 import os
 import subprocess
 import uuid
@@ -13,6 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 import shutil
@@ -25,12 +23,23 @@ import thai_fixer
 import ai_corrector
 
 # ─── Logging setup ───
+LOG_DIR = Path("/app/data/logs")
+LOG_DIR.mkdir(exist_ok=True, parents=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("api")
+
+# Rotate logs at 10MB, keep 5 backups
+file_handler = logging.handlers.RotatingFileHandler(
+    LOG_DIR / "api.log", maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
+)
+file_handler.setFormatter(
+    logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s", "%Y-%m-%d %H:%M:%S")
+)
+logging.getLogger().addHandler(file_handler)
 
 # ─── Paths ───
 INPUT_DIR = Path(os.environ.get("INPUT_DIR", "/app/input"))
@@ -97,7 +106,10 @@ async def lifespan(app: FastAPI):
     await worker.init_worker(num_workers=4)
     logger.info("Worker system started")
     yield
-    logger.info("Shutting down...")
+    logger.info("Shutting down workers and database connection...")
+    await worker.shutdown_worker()
+    await db.close_db()
+    logger.info("Shutdown complete.")
 
 
 app = FastAPI(
@@ -105,6 +117,15 @@ app = FastAPI(
     description="Async video editing pipeline for Hermes Agent",
     version="2.0.0",
     lifespan=lifespan,
+)
+
+# Enable CORS for all routes (production best practice)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -195,37 +216,36 @@ async def get_job(task_id: str):
 
 
 # ─── File exploration ───
-
 @app.get("/v1/inputs")
 async def list_inputs():
     """List all input video files with metadata (size, duration, resolution)."""
-    if not INPUT_DIR.exists():
-        return {"files": []}
-
-    files = []
-    for f in sorted(INPUT_DIR.iterdir()):
-        if f.is_file() and f.suffix.lower() in (".mp4", ".mov", ".mkv", ".avi", ".webm"):
-            meta = _get_file_metadata(f)
-            files.append(meta)
-
+    def get_inputs():
+        if not INPUT_DIR.exists():
+            return []
+        files = []
+        for f in sorted(INPUT_DIR.iterdir()):
+            if f.is_file() and f.suffix.lower() in (".mp4", ".mov", ".mkv", ".avi", ".webm"):
+                meta = _get_file_metadata(f)
+                files.append(meta)
+        return files
+    files = await asyncio.to_thread(get_inputs)
     return {"files": files}
 
 
 @app.get("/v1/outputs")
 async def list_outputs():
     """List all rendered output files with metadata."""
-    if not OUTPUT_DIR.exists():
-        return {"files": []}
-
-    files = []
-    for f in sorted(OUTPUT_DIR.iterdir()):
-        if f.is_file() and f.suffix.lower() in (".mp4", ".mov", ".mkv", ".avi", ".webm"):
-            meta = _get_file_metadata(f)
-            files.append(meta)
-
+    def get_outputs():
+        if not OUTPUT_DIR.exists():
+            return []
+        files = []
+        for f in sorted(OUTPUT_DIR.iterdir()):
+            if f.is_file() and f.suffix.lower() in (".mp4", ".mov", ".mkv", ".avi", ".webm"):
+                meta = _get_file_metadata(f)
+                files.append(meta)
+        return files
+    files = await asyncio.to_thread(get_outputs)
     return {"files": files}
-
-
 @app.get("/v1/inputs/{filename}/transcript")
 async def get_transcript(filename: str):
     """
@@ -376,6 +396,7 @@ class RenderProjectRequest(BaseModel):
     clip_ranges: list[ClipRange]
     trim_silence: bool = True
     auto_zoom: bool = True
+    smart_crop: bool = True
 
 
 @app.post("/v1/upload")
@@ -391,10 +412,12 @@ async def upload_video(file: UploadFile = File(...)):
     filename = f"{uuid.uuid4()}{ext}"
     dest_path = UPLOADS_DIR / filename
     
-    with open(dest_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    def save_file():
+        with open(dest_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    await asyncio.to_thread(save_file)
         
-    meta = _get_file_metadata(dest_path)
+    meta = await asyncio.to_thread(_get_file_metadata, dest_path)
     meta["source_type"] = "upload"
     return meta
 
@@ -402,21 +425,23 @@ async def upload_video(file: UploadFile = File(...)):
 @app.get("/v1/videos")
 async def list_videos():
     """List all available videos from both INPUT_DIR and UPLOADS_DIR."""
-    videos = []
-    if INPUT_DIR.exists():
-        for f in sorted(INPUT_DIR.iterdir()):
-            if f.is_file() and f.suffix.lower() in (".mp4", ".mov", ".mkv", ".avi", ".webm"):
-                meta = _get_file_metadata(f)
-                meta["source_type"] = "input"
-                videos.append(meta)
-                
-    if UPLOADS_DIR.exists():
-        for f in sorted(UPLOADS_DIR.iterdir()):
-            if f.is_file() and f.suffix.lower() in (".mp4", ".mov", ".mkv", ".avi", ".webm"):
-                meta = _get_file_metadata(f)
-                meta["source_type"] = "upload"
-                videos.append(meta)
-                
+    def scan_videos():
+        videos = []
+        if INPUT_DIR.exists():
+            for f in sorted(INPUT_DIR.iterdir()):
+                if f.is_file() and f.suffix.lower() in (".mp4", ".mov", ".mkv", ".avi", ".webm"):
+                    meta = _get_file_metadata(f)
+                    meta["source_type"] = "input"
+                    videos.append(meta)
+                    
+        if UPLOADS_DIR.exists():
+            for f in sorted(UPLOADS_DIR.iterdir()):
+                if f.is_file() and f.suffix.lower() in (".mp4", ".mov", ".mkv", ".avi", ".webm"):
+                    meta = _get_file_metadata(f)
+                    meta["source_type"] = "upload"
+                    videos.append(meta)
+        return videos
+    videos = await asyncio.to_thread(scan_videos)
     return {"videos": videos}
 
 
@@ -441,6 +466,40 @@ async def get_project_route(project_id: str):
     if not proj:
         raise HTTPException(404, f"Project not found: {project_id}")
     return proj
+
+
+@app.delete("/v1/projects/{project_id}")
+async def delete_project_route(project_id: str):
+    """Delete a project by ID, including associated files on disk."""
+    proj = await db.get_project(project_id)
+    if not proj:
+        raise HTTPException(404, f"Project not found: {project_id}")
+
+    deleted_files = []
+
+    def remove_files():
+        # 1. Delete rendered output video(s) matching project_id prefix
+        if OUTPUT_DIR.exists():
+            for f in OUTPUT_DIR.iterdir():
+                if f.is_file() and f.name.startswith(f"project_{project_id}_"):
+                    f.unlink(missing_ok=True)
+                    deleted_files.append(f.name)
+
+        # 2. Delete uploaded source video if applicable
+        video_name = proj.get("video_name", "")
+        if proj.get("source_type") == "upload" or (UPLOADS_DIR / video_name).exists():
+            upload_path = UPLOADS_DIR / video_name
+            if upload_path.exists() and upload_path.is_file():
+                upload_path.unlink(missing_ok=True)
+                deleted_files.append(video_name)
+
+    await asyncio.to_thread(remove_files)
+
+    # 3. Delete from database
+    await db.delete_project(project_id)
+
+    logger.info(f"Deleted project {project_id}, files: {deleted_files}")
+    return {"status": "deleted", "project_id": project_id, "files_deleted": deleted_files}
 
 
 @app.post("/v1/projects/{project_id}/transcribe")
@@ -469,7 +528,7 @@ async def _run_project_transcription(project_id: str, video_name: str):
         transcript = await asyncio.to_thread(transcriber.transcribe_video, video_path, language="th")
         
         # 2. Thai Fixer
-        transcript = thai_fixer.fix_transcript(transcript)
+        transcript = await asyncio.to_thread(thai_fixer.fix_transcript, transcript)
         
         # 3. AI Corrector
         transcript = await asyncio.to_thread(ai_corrector.correct_transcript, transcript)
@@ -509,7 +568,7 @@ async def apply_edits_route(project_id: str, req: ApplyEditsRequest):
             raw_transcript["segments"][idx]["end"] = s.end
             
     corrected_segments = [s.text for s in req.segments]
-    aligned = ai_corrector.align_text_to_timestamps(raw_transcript, corrected_segments)
+    aligned = await asyncio.to_thread(ai_corrector.align_text_to_timestamps, raw_transcript, corrected_segments)
     corrected_text = "\n".join(corrected_segments)
     
     await db.update_project(
@@ -541,15 +600,18 @@ async def suggest_overlays_route(project_id: str):
 @app.get("/v1/projects/{project_id}/sfx")
 async def list_sfx_route(project_id: str):
     """List available sound effects."""
-    sfx_dir = Path("/app/assets/sfx")
-    sfx_files = []
-    if sfx_dir.exists():
-        for f in sfx_dir.iterdir():
-            if f.is_file() and f.suffix.lower() in (".wav", ".mp3"):
-                sfx_files.append({
-                    "name": f.stem,
-                    "asset": f"assets/sfx/{f.name}"
-                })
+    def get_sfx():
+        sfx_dir = Path("/app/assets/sfx")
+        sfx_files = []
+        if sfx_dir.exists():
+            for f in sfx_dir.iterdir():
+                if f.is_file() and f.suffix.lower() in (".wav", ".mp3"):
+                    sfx_files.append({
+                        "name": f.stem,
+                        "asset": f"assets/sfx/{f.name}"
+                    })
+        return sfx_files
+    sfx_files = await asyncio.to_thread(get_sfx)
     if not sfx_files:
         sfx_files = [
             {"name": "ding", "asset": "assets/sfx/ding.wav"},
@@ -612,6 +674,7 @@ async def render_project_route(project_id: str, req: RenderProjectRequest):
         "overlays": [o.model_dump() for o in req.overlays],
         "trim_silence": req.trim_silence,
         "auto_zoom": req.auto_zoom,
+        "smart_crop": req.smart_crop,
         "transcript_override": aligned_transcript,
         "is_uploaded_video": path2.exists()
     }

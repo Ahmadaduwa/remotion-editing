@@ -18,8 +18,8 @@ import urllib.error
 
 logger = logging.getLogger(__name__)
 
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://100.119.233.96:11434")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://100.124.101.126:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3.5:2b")
 
 # Rate limit: don't call LLM more than once per N seconds
 _last_llm_call = 0
