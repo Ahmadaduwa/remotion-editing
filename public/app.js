@@ -550,11 +550,14 @@ const renderedOutputSection = document.getElementById('rendered-output-section')
 const finalVideoPlayer = document.getElementById('final-video-player');
 const finalVideoDownload = document.getElementById('final-video-download');
 
-// Circular progress initialization
-const circleRadius = renderCircleProgress.r.baseVal.value;
-const circleCircumference = circleRadius * 2 * Math.PI;
-renderCircleProgress.style.strokeDasharray = `${circleCircumference} ${circleCircumference}`;
-renderCircleProgress.style.strokeDashoffset = circleCircumference;
+// Circular progress initialization (element is inside render drawer)
+let circleRadius = 42, circleCircumference = 42 * 2 * Math.PI;
+if (renderCircleProgress) {
+    circleRadius = renderCircleProgress.r.baseVal.value;
+    circleCircumference = circleRadius * 2 * Math.PI;
+    renderCircleProgress.style.strokeDasharray = `${circleCircumference} ${circleCircumference}`;
+    renderCircleProgress.style.strokeDashoffset = circleCircumference;
+}
 
 function setProgress(percent) {
     const offset = circleCircumference - (percent / 100) * circleCircumference;
@@ -564,16 +567,13 @@ function setProgress(percent) {
 
 // ─── Step Management ───
 function goToStep(stepNum) {
-    if (stepNum < 1 || stepNum > 5) return;
-    
-    // Stop any active rendering polling if leaving step 5
-    if (state.currentStep === 5 && stepNum !== 5) {
-        clearInterval(state.renderPollInterval);
-    }
-    
+    // Map old steps 4 & 5 into the NLE workspace (step 3)
+    if (stepNum === 4 || stepNum === 5) stepNum = 3;
+    if (stepNum < 1 || stepNum > 3) return;
+
     state.currentStep = stepNum;
-    
-    // Update active state in UI stepper
+
+    // Update stepper UI (stepper now has only 3 steps)
     steps.forEach(step => {
         const num = parseInt(step.dataset.step);
         step.classList.remove('active', 'completed');
@@ -584,14 +584,21 @@ function goToStep(stepNum) {
         }
     });
 
-    // Update active pane
+    // Update active pane (step-pane-4/5 are hidden in HTML)
     stepPanes.forEach(pane => pane.classList.remove('active'));
-    document.getElementById(`step-pane-${stepNum}`).classList.add('active');
+    const targetPane = document.getElementById(`step-pane-${stepNum}`);
+    if (targetPane) targetPane.classList.add('active');
 
     // Show projects panel only on step 1
     const projectsPanel = document.getElementById('projects-panel');
     if (projectsPanel) {
         projectsPanel.style.display = (stepNum === 1 && state.projects.length > 0) ? 'block' : 'none';
+    }
+
+    // Show/hide header project area
+    const headerProjectArea = document.getElementById('header-project-area');
+    if (headerProjectArea) {
+        headerProjectArea.style.display = (stepNum > 1 && state.selectedProject) ? 'flex' : 'none';
     }
 
     // Run pane-specific loader
@@ -600,6 +607,7 @@ function goToStep(stepNum) {
 
 function onEnterStep(stepNum) {
     stopLivePreviewLoop();
+    // Pause any legacy video elements
     const v3 = document.getElementById('preview-video');
     const v4 = document.getElementById('preview-video-step4');
     if (v3) v3.pause();
@@ -611,43 +619,22 @@ function onEnterStep(stepNum) {
     } else if (stepNum === 2) {
         updateTranscriptionStageUI();
     } else if (stepNum === 3) {
-        renderSubtitleEditor();
-        renderVisualTimeline();
-        if (state.selectedProject && v3) {
-            v3.src = getVideoSrcUrl(state.selectedProject.video_name);
-            startLivePreviewLoop(v3, document.getElementById('preview-subtitle-overlay'));
-        }
-    } else if (stepNum === 4) {
-        loadSFXList();
-        renderOverlaysTable();
-        if (state.selectedProject && v4) {
-            v4.src = getVideoSrcUrl(state.selectedProject.video_name);
-            startLivePreviewLoop(v4, document.getElementById('preview-subtitle-overlay-step4'));
-        }
-    } else if (stepNum === 5) {
-        renderRangeCuts();
-        populateSettingsForm();
+        // NLE workspace: initialize or refresh
+        initNLE();
     }
 }
 
-// Bind stepper clicks
+// Bind stepper clicks (3-step flow)
 steps.forEach(step => {
     step.addEventListener('click', () => {
         const targetStep = parseInt(step.dataset.step);
-        // Only allow switching to steps we have unlocked based on state
         if (targetStep === 1) {
             goToStep(1);
         } else if (targetStep === 2 && state.selectedVideo) {
             goToStep(2);
-        } else if (targetStep === 3 && state.selectedProject && 
+        } else if (targetStep === 3 && state.selectedProject &&
                   ['transcribed', 'ready', 'rendering', 'completed'].includes(state.selectedProject.status)) {
             goToStep(3);
-        } else if (targetStep === 4 && state.selectedProject && 
-                  ['transcribed', 'ready', 'rendering', 'completed'].includes(state.selectedProject.status)) {
-            goToStep(4);
-        } else if (targetStep === 5 && state.selectedProject && 
-                  ['ready', 'rendering', 'completed'].includes(state.selectedProject.status)) {
-            goToStep(5);
         }
     });
 });
@@ -885,6 +872,17 @@ projectSelect.addEventListener('change', async (e) => {
 async function selectVideo(video) {
     state.selectedVideo = video;
     
+    // Enable auto-edit button
+    const autoEditBtn = document.getElementById('auto-edit-btn');
+    if (autoEditBtn) autoEditBtn.disabled = false;
+    
+    // Update auto-edit summary
+    const summaryEl = document.getElementById('auto-edit-summary');
+    if (summaryEl) {
+        const dur = video.duration_seconds ? `${Math.round(video.duration_seconds)}s` : 'Unknown';
+        summaryEl.innerText = `✅ Selected: ${video.filename} (${dur})`;
+    }
+    
     // Automatically create project on server
     try {
         const response = await fetch(`${API_BASE}/v1/projects`, {
@@ -1085,25 +1083,23 @@ function renderSubtitleEditor() {
     });
 }
 
-applySubtitleEditsBtn.addEventListener('click', async () => {
+async function applySubtitleEdits() {
     if (!state.selectedProject) return;
     
-    const inputs = document.querySelectorAll('.subtitle-text-input');
-    const segments = [];
-    inputs.forEach(input => {
-        const idx = parseInt(input.dataset.index);
-        const seg = state.selectedProject.raw_transcript.segments[idx];
-        segments.push({
-            text: input.value,
-            start: seg.start,
-            end: seg.end
-        });
-    });
-    
+    const pid = state.selectedProject.project_id;
+    const transcript = state.selectedProject.aligned_transcript || state.selectedProject.raw_transcript;
+    if (!transcript || !transcript.segments) return;
+
+    const segments = transcript.segments.map(seg => ({
+        text: seg.text,
+        start: seg.start,
+        end: seg.end
+    }));
+
+    const btn = document.getElementById('apply-subtitle-edits-btn');
+    if (btn) btn.innerText = 'Saving...';
+
     try {
-        const pid = state.selectedProject.project_id;
-        applySubtitleEditsBtn.innerText = 'Applying...';
-        
         const response = await fetch(`${API_BASE}/v1/projects/${pid}/apply-edits`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -1114,16 +1110,22 @@ applySubtitleEditsBtn.addEventListener('click', async () => {
         state.selectedProject.status = 'ready';
         state.selectedProject.aligned_transcript = result.aligned_transcript;
         
-        applySubtitleEditsBtn.innerText = 'Saved!';
-        setTimeout(() => applySubtitleEditsBtn.innerText = 'Apply Subtitle Edits', 1500);
-        
-        loadProjects();
-        goToStep(4);
+        // Save project settings to server as well
+        await saveProjectSettingsToServer();
+
+        if (btn) btn.innerText = 'Saved!';
+        setTimeout(() => { if (btn) btn.innerText = '✓ Save Edits'; }, 1500);
+        showToast("✓ All edits saved to server!", "success");
+        renderNLETimeline();
     } catch (e) {
-        showToast("Failed to apply edits: " + e.message, "error");
-        applySubtitleEditsBtn.innerText = 'Apply Subtitle Edits';
+        showToast("Failed to save edits: " + e.message, "error");
+        if (btn) btn.innerText = '✓ Save Edits';
     }
-});
+}
+
+if (applySubtitleEditsBtn) {
+    applySubtitleEditsBtn.addEventListener('click', applySubtitleEdits);
+}
 
 // ─── Step 4: Overlays Timeline ───
 
@@ -1148,24 +1150,32 @@ async function loadSFXList() {
     }
 }
 
-suggestOverlaysBtn.addEventListener('click', async () => {
+async function handleSuggestOverlays() {
     if (!state.selectedProject) return;
     
-    suggestOverlaysBtn.innerText = 'Suggesting (Ollama)...';
+    const suggestBtn = document.getElementById('suggest-overlays-btn');
+    if (suggestBtn) suggestBtn.innerText = 'Suggesting (Ollama)...';
     try {
         const pid = state.selectedProject.project_id;
-        const response = await fetch(`${API_BASE}/v1/projects/${pid}/suggest-overlays`, {method: 'POST'});
+        const response = await fetch(`${API_BASE}/v1/projects/${pid}/orchestrate`, {method: 'POST'});
         const data = await response.json();
         
-        state.overlays = data.overlays || [];
-        renderOverlaysTable();
+        // Reload project to get newly created subtitles & overlays
+        const responseProj = await fetch(`${API_BASE}/v1/projects/${pid}`);
+        const proj = await responseProj.json();
+        state.selectedProject = proj;
+        state.overlays = proj.overlays || [];
         
-        suggestOverlaysBtn.innerText = 'Suggest Overlays (AI)';
+        renderNLETimeline();
+        showToast("✨ Overlays and SFX updated by AI Orchestrator!", "success");
+        if (suggestBtn) suggestBtn.innerText = '✨ AI Suggest SFX';
     } catch (e) {
         showToast("Failed to fetch AI suggestions: " + e.message, "error");
-        suggestOverlaysBtn.innerText = 'Suggest Overlays (AI)';
+        if (suggestBtn) suggestBtn.innerText = '✨ AI Suggest SFX';
     }
-});
+}
+
+suggestOverlaysBtn.addEventListener('click', handleSuggestOverlays);
 
 downloadOverlaysBtn.addEventListener('click', () => {
     if (state.overlays.length === 0) {
@@ -1277,18 +1287,26 @@ function renderVisualOverlaysTimeline() {
 }
 
 // Overlay Form Logic
-formOverlayType.addEventListener('change', () => {
-    const isText = formOverlayType.value === 'text';
-    document.getElementById('form-group-end').style.display = isText ? 'flex' : 'none';
-    document.getElementById('form-group-content').style.display = isText ? 'flex' : 'none';
-    document.getElementById('form-group-style').style.display = isText ? 'flex' : 'none';
-    document.getElementById('form-group-position').style.display = isText ? 'flex' : 'none';
-    document.getElementById('form-group-asset').style.display = isText ? 'none' : 'flex';
-    document.getElementById('form-group-volume').style.display = isText ? 'none' : 'flex';
-});
+if (formOverlayType) {
+    formOverlayType.addEventListener('change', () => {
+        const isText = formOverlayType.value === 'text';
+        const elEnd = document.getElementById('form-group-end');
+        if (elEnd) elEnd.style.display = isText ? 'flex' : 'none';
+        const elContent = document.getElementById('form-group-content');
+        if (elContent) elContent.style.display = isText ? 'flex' : 'none';
+        const elStyle = document.getElementById('form-group-style');
+        if (elStyle) elStyle.style.display = isText ? 'flex' : 'none';
+        const elPosition = document.getElementById('form-group-position');
+        if (elPosition) elPosition.style.display = isText ? 'flex' : 'none';
+        const elAsset = document.getElementById('form-group-asset');
+        if (elAsset) elAsset.style.display = isText ? 'none' : 'flex';
+        const elVolume = document.getElementById('form-group-volume');
+        if (elVolume) elVolume.style.display = isText ? 'none' : 'flex';
+    });
 
-// Trigger change to set correct visibility
-formOverlayType.dispatchEvent(new Event('change'));
+    // Trigger change to set correct visibility
+    formOverlayType.dispatchEvent(new Event('change'));
+}
 
 addOverlayBtn.addEventListener('click', () => {
     state.activeOverlayIndex = null;
@@ -1437,6 +1455,14 @@ addRangeCutBtn.addEventListener('click', () => {
     renderRangeCuts();
 });
 
+function addRangeCut() {
+    const lastRange = state.clipRanges[state.clipRanges.length - 1];
+    const newStart = lastRange ? lastRange.end : 0.0;
+    const dur = state.selectedProject?.aligned_transcript?.duration || 
+                state.selectedProject?.raw_transcript?.duration || 30.0;
+    state.clipRanges.push({ start: newStart, end: parseFloat(dur.toFixed(2)) });
+}
+
 function deleteRangeCut(index) {
     if (state.clipRanges.length > 1) {
         state.clipRanges.splice(index, 1);
@@ -1446,32 +1472,45 @@ function deleteRangeCut(index) {
     }
 }
 
-triggerRenderBtn.addEventListener('click', async () => {
+async function triggerRender() {
     if (!state.selectedProject) return;
-    
+
     const pid = state.selectedProject.project_id;
-    const mode = document.querySelector('input[name="render-mode"]:checked').value;
-    const subtitle_style = document.getElementById('render-subtitle-style').value;
-    const trim_silence = document.getElementById('render-trim-silence').checked;
-    const auto_zoom = document.getElementById('render-auto-zoom').checked;
-    const smart_crop = document.getElementById('render-smart-crop').checked;
-    
+    const mode = document.querySelector('input[name="render-mode"]:checked')?.value || 'short';
+    const subtitle_style = document.getElementById('render-subtitle-style')?.value || 'karaoke';
+    const trim_silence = document.getElementById('render-trim-silence')?.checked ?? true;
+    const auto_zoom = document.getElementById('render-auto-zoom')?.checked ?? true;
+    const smart_crop = document.getElementById('render-smart-crop')?.checked ?? true;
+
+    // New feature toggles from the NLE render drawer
+    const enable_sfx     = document.getElementById('render-sfx-layer')?.checked ?? true;
+    const enable_overlays= document.getElementById('render-text-overlays')?.checked ?? true;
+    const enable_bgm_flag= document.getElementById('render-bgm')?.checked ?? true;
+    const enable_ducking = document.getElementById('render-auto-ducking')?.checked ?? true;
+
     const subtitle_style_settings = {
-        fontFamily: document.getElementById('style-font-family').value,
-        fontSize: parseInt(document.getElementById('style-font-size').value),
-        color: document.getElementById('style-text-color').value,
-        highlightColor: document.getElementById('style-highlight-color').value,
-        backgroundType: document.getElementById('style-bg-type').value,
-        backgroundColor: document.getElementById('style-bg-color').value,
-        animation: document.getElementById('style-animation').value
+        fontFamily:      document.getElementById('style-font-family')?.value || 'Noto Sans Thai',
+        fontSize:        parseInt(document.getElementById('style-font-size')?.value || '44'),
+        color:           document.getElementById('style-text-color')?.value || '#ffffff',
+        highlightColor:  document.getElementById('style-highlight-color')?.value || '#FFD700',
+        backgroundType:  document.getElementById('style-bg-type')?.value || 'card',
+        backgroundColor: document.getElementById('style-bg-color')?.value || '#000000',
+        animation:       document.getElementById('style-animation')?.value || 'pop',
     };
-    
-    const bgm_track = document.getElementById('bgm-track').value;
-    const bgm_settings = bgm_track ? {
-        asset: bgm_track,
-        volume: parseFloat(document.getElementById('bgm-volume').value),
-        enableDucking: document.getElementById('bgm-enable-ducking').checked
+
+    const bgm_track = document.getElementById('bgm-track')?.value;
+    const bgm_settings = (bgm_track && enable_bgm_flag) ? {
+        asset:         bgm_track,
+        volume:        parseFloat(document.getElementById('bgm-volume')?.value || '0.15'),
+        enableDucking: enable_ducking,
     } : null;
+
+    // Filter overlays based on toggles
+    const filteredOverlays = (state.overlays || []).filter(o => {
+        if ((o.type === 'audio' || o.type === 'sfx') && !enable_sfx) return false;
+        if ((o.type === 'text' || o.type === 'overlay') && !enable_overlays) return false;
+        return true;
+    });
 
     const payload = {
         mode,
@@ -1481,35 +1520,44 @@ triggerRenderBtn.addEventListener('click', async () => {
         trim_silence,
         auto_zoom,
         smart_crop,
-        overlays: state.overlays,
-        clip_ranges: state.clipRanges
+        overlays:     filteredOverlays,
+        clip_ranges:  state.clipRanges,
     };
-    
-    triggerRenderBtn.disabled = true;
-    triggerRenderBtn.innerText = 'Submitting Job...';
-    
-    renderProgressSection.style.display = 'flex';
-    renderedOutputSection.style.display = 'none';
-    
+
+    const btn = document.getElementById('trigger-render-btn');
+    if (btn) { btn.disabled = true; btn.innerText = 'Submitting Job...'; }
+
+    const progressSec = document.getElementById('render-progress-section');
+    const outputSec   = document.getElementById('rendered-output-section');
+    if (progressSec) progressSec.style.display = 'flex';
+    if (outputSec)   outputSec.style.display   = 'none';
+
     try {
         const response = await fetch(`${API_BASE}/v1/projects/${pid}/render`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
         });
         const job = await response.json();
-        
+
         setProgress(0);
-        renderStatusLabel.innerText = 'Queued';
-        renderStatusDetails.innerText = 'Waiting for rendering worker...';
-        
+        const lbl = document.getElementById('render-status-label');
+        const det = document.getElementById('render-status-details');
+        if (lbl) lbl.innerText = 'Queued';
+        if (det) det.innerText = 'Waiting for rendering worker...';
+
         pollRenderJob(job.task_id);
     } catch (e) {
-        showToast("Rendering job failed to start: " + e.message, "error");
-        triggerRenderBtn.disabled = false;
-        triggerRenderBtn.innerText = 'Render Final Video';
+        showToast('Rendering job failed to start: ' + e.message, 'error');
+        if (btn) { btn.disabled = false; btn.innerText = 'Render Final Video'; }
     }
-});
+}
+
+// Keep legacy listener for backward compat (works if button is in DOM at page load)
+if (triggerRenderBtn) {
+    triggerRenderBtn.addEventListener('click', triggerRender);
+}
+
 
 function pollRenderJob(taskId) {
     clearInterval(state.renderPollInterval);
@@ -1517,66 +1565,50 @@ function pollRenderJob(taskId) {
         try {
             const response = await fetch(`${API_BASE}/v1/jobs/${taskId}`);
             const job = await response.json();
-            
+
             const progress = job.progress_percent || 0;
             setProgress(progress);
-            
+
+            const lbl = document.getElementById('render-status-label');
+            const det = document.getElementById('render-status-details');
+            const progSec = document.getElementById('render-progress-section');
+            const outSec  = document.getElementById('rendered-output-section');
+
             if (job.status === 'queued') {
-                renderStatusLabel.innerText = 'Queued';
-                renderStatusDetails.innerText = 'Job is in the processing queue';
+                if (lbl) lbl.innerText = 'Queued';
+                if (det) det.innerText = 'Job is in the processing queue';
             } else if (job.status === 'processing') {
-                renderStatusLabel.innerText = 'Rendering';
-                renderStatusDetails.innerText = `Stitching cuts & running Remotion renderer (stage details available in server)`;
+                if (lbl) lbl.innerText = 'Rendering';
+                if (det) det.innerText = `Stitching cuts & running Remotion renderer...`;
             } else if (job.status === 'completed') {
                 clearInterval(state.renderPollInterval);
-                renderStatusLabel.innerText = 'Complete!';
-                renderProgressSection.style.display = 'none';
-                
-                // Show output
-                renderedOutputSection.style.display = 'block';
-                
-                // Remotion output files are written to /app/output
-                // The backend uvicorn serves from /app/public and does not directly mount output files.
-                // However, FastAPI can expose static files from output!
-                // Wait, uvicorn doesn't expose OUTPUT_DIR directly as static files.
-                // But in api.py, the endpoint `/v1/jobs/{task_id}` details returns `"output_path"`.
-                // Can we expose it?
-                // Yes! Let's check how the video file is accessed.
-                // FastAPI's `/v1/outputs` lists output files. We can download output files by creating an endpoint!
-                // Wait! Let's see if we have an endpoint for downloading files or if uvicorn can mount output folder.
-                // In api.py, we mounted:
-                // `app.mount("/", StaticFiles(directory="/app/public", html=True), name="public")`
-                // But `/app/public/assets` is symlinked to `/app/assets`.
-                // Can we symlink /app/output or add a route for `/output`?
-                // Let's check if api.py has `/v1/jobs/{task_id}` which returns output_path.
-                // We should expose `/output` directory as static files as well so the browser can play them!
-                // Let's add `/output` mount to api.py:
-                // `app.mount("/output", StaticFiles(directory="/app/output"), name="output")`
-                // That way, we can download the final output directly at `/output/{filename}`!
-                // Wait, did we do that? Yes, we can add it or did we already do it?
-                // In api.py, we only mounted:
-                // `app.mount("/", StaticFiles(directory="/app/public", html=True), name="public")`
-                // So let's add `app.mount("/output", StaticFiles(directory="/app/output"), name="output")` right before `/` mount!
-                // This is extremely important so that `final-video-player` can play the video!
-                
+                if (lbl) lbl.innerText = 'Complete!';
+                if (progSec) progSec.style.display = 'none';
+                if (outSec)  outSec.style.display  = 'block';
+
                 const filename = job.output_path.split('/').pop();
-                finalVideoPlayer.src = `/output/${filename}`;
-                finalVideoDownload.href = `/output/${filename}`;
-                
-                triggerRenderBtn.disabled = false;
-                triggerRenderBtn.innerText = 'Render Final Video';
+                const fvp = document.getElementById('final-video-player');
+                const fvd = document.getElementById('final-video-download');
+                if (fvp) fvp.src = `/output/${filename}`;
+                if (fvd) { fvd.href = `/output/${filename}`; fvd.download = filename; }
+
+                const btn = document.getElementById('trigger-render-btn');
+                if (btn) { btn.disabled = false; btn.innerText = 'Render Final Video'; }
+
+                showToast('🎉 Video rendered successfully!', 'success');
             } else if (job.status === 'failed') {
                 clearInterval(state.renderPollInterval);
-                renderStatusLabel.innerText = 'Failed';
-                renderStatusDetails.innerText = `Error: ${job.error || 'Check server logs'}`;
-                triggerRenderBtn.disabled = false;
-                triggerRenderBtn.innerText = 'Render Final Video';
+                if (lbl) lbl.innerText = 'Failed';
+                if (det) det.innerText = `Error: ${job.error || 'Check server logs'}`;
+                const btn = document.getElementById('trigger-render-btn');
+                if (btn) { btn.disabled = false; btn.innerText = 'Render Final Video'; }
             }
         } catch (e) {
-            console.error("Poller error", e);
+            console.error('Poller error', e);
         }
     }, 2000);
 }
+
 
 // Bind auto-save change listeners to Style/BGM forms
 const stylingInputs = [
@@ -1598,3 +1630,1009 @@ stylingInputs.forEach(id => {
 
 // Initial Load
 goToStep(1);
+
+// ══════════════════════════════════════════════════════════════════
+//  NLE WORKSPACE MODULE — Professional Timeline Editor
+// ══════════════════════════════════════════════════════════════════
+
+const NLE = {
+    zoom: 80,           // pixels per second
+    duration: 0,        // video duration in seconds
+    selectedBlock: null,
+    selectedTrack: null,
+    tool: 'select',
+    sfxTriggered: new Set(),
+    initialized: false,
+    nleVideo: null,
+};
+
+const NLE_PX_PER_SEC_BASE = 80;
+
+// ── INIT NLE ──────────────────────────────────────────────────────
+function initNLE() {
+    const proj = state.selectedProject;
+    if (!proj) return;
+
+    // Load project state elements
+    state.overlays = proj.overlays || [];
+    state.clipRanges = proj.clip_ranges || [];
+
+    const video = document.getElementById('nle-preview-video');
+    if (!video) return;
+
+    NLE.nleVideo = video;
+
+    // Set video source
+    const videoSrc = getVideoSrcUrl(proj.video_name);
+    if (!video.src || !video.src.endsWith(proj.video_name)) {
+        video.src = videoSrc;
+        video.load();
+    }
+
+    // Initialize on metadata load or immediately if already loaded
+    const onMeta = () => {
+        NLE.duration = video.duration || 0;
+        renderNLETimeline();
+    };
+
+    if (video.readyState >= 1 && video.duration) {
+        NLE.duration = video.duration;
+        renderNLETimeline();
+    } else {
+        video.removeEventListener('loadedmetadata', onMeta);
+        video.addEventListener('loadedmetadata', onMeta, { once: true });
+    }
+
+    // Transport controls
+    document.getElementById('nle-play-pause').onclick = nleTogglePlay;
+    document.getElementById('nle-goto-start').onclick = () => { video.currentTime = 0; NLE.sfxTriggered.clear(); };
+    document.getElementById('nle-goto-end').onclick = () => { if (video.duration) video.currentTime = video.duration; };
+
+    // Video events
+    video.removeEventListener('timeupdate', nleOnTimeUpdate);
+    video.addEventListener('timeupdate', nleOnTimeUpdate);
+    video.addEventListener('ended', () => {
+        document.getElementById('nle-play-pause').textContent = '▶';
+    }, { once: false });
+
+    // Space bar play/pause
+    document.onkeydown = (e) => {
+        if (e.code === 'Space' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
+            e.preventDefault();
+            nleTogglePlay();
+        }
+    };
+
+    // Zoom controls
+    const zoomSlider = document.getElementById('tl-zoom-slider');
+    if (zoomSlider && !zoomSlider._nlebound) {
+        zoomSlider._nlebound = true;
+        zoomSlider.oninput = () => {
+            NLE.zoom = parseInt(zoomSlider.value);
+            const mult = (NLE.zoom / NLE_PX_PER_SEC_BASE).toFixed(1);
+            document.getElementById('tl-zoom-label').textContent = mult + '×';
+            renderNLETimeline();
+        };
+        document.getElementById('tl-zoom-out').onclick = () => {
+            zoomSlider.value = Math.max(30, NLE.zoom - 15);
+            zoomSlider.dispatchEvent(new Event('input'));
+        };
+        document.getElementById('tl-zoom-in').onclick = () => {
+            zoomSlider.value = Math.min(500, NLE.zoom + 15);
+            zoomSlider.dispatchEvent(new Event('input'));
+        };
+    }
+
+    // Timeline click to reposition playhead
+    const scroll = document.getElementById('tl-tracks-scroll');
+    if (scroll && !scroll._nlebound) {
+        scroll._nlebound = true;
+        scroll.addEventListener('click', (e) => {
+            if (e.target.classList.contains('tl-block') ||
+                e.target.classList.contains('tl-block-label') ||
+                e.target.classList.contains('tl-resize-handle')) return;
+            const rect = scroll.getBoundingClientRect();
+            const x = e.clientX - rect.left + scroll.scrollLeft;
+            const t = Math.max(0, Math.min(NLE.duration || 9999, x / NLE.zoom));
+            video.currentTime = t;
+            NLE.sfxTriggered.clear();
+        });
+    }
+
+    // Inspector tabs
+    document.querySelectorAll('.insp-tab').forEach(tab => {
+        tab.onclick = () => {
+            document.querySelectorAll('.insp-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.insp-content').forEach(c => c.classList.remove('active'));
+            tab.classList.add('active');
+            const contentEl = document.getElementById('insp-tab-' + tab.dataset.tab);
+            if (contentEl) contentEl.classList.add('active');
+        };
+    });
+
+    // Inspector apply/delete
+    const applyBtn = document.getElementById('insp-apply-btn');
+    if (applyBtn) applyBtn.onclick = nleApplyBlockEdit;
+    const deleteBtn = document.getElementById('insp-delete-btn');
+    if (deleteBtn) deleteBtn.onclick = nleDeleteBlock;
+
+    // NLE tool selection
+    document.querySelectorAll('.nle-tool').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.nle-tool').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            NLE.tool = btn.dataset.tool;
+        };
+    });
+
+    // Render drawer button
+    const openDrawerBtn = document.getElementById('open-render-drawer-btn');
+    if (openDrawerBtn) openDrawerBtn.onclick = nleOpenRenderDrawer;
+
+    const closeDrawerBtn = document.getElementById('render-drawer-close');
+    if (closeDrawerBtn) closeDrawerBtn.onclick = nleCloseRenderDrawer;
+
+    const drawerEl = document.getElementById('render-drawer');
+    if (drawerEl) drawerEl.onclick = (e) => { if (e.target === drawerEl) nleCloseRenderDrawer(); };
+
+    // Render button inside drawer
+    const renderBtn = document.getElementById('trigger-render-btn');
+    if (renderBtn) renderBtn.onclick = triggerRender;
+
+    // Add range cut button
+    const addRangeCutBtnNLE = document.getElementById('add-range-cut-btn');
+    if (addRangeCutBtnNLE) addRangeCutBtnNLE.onclick = () => {
+        addRangeCut();
+        renderRangeCuts();
+    };
+
+    // AI Suggest overlays
+    const suggestBtn = document.getElementById('suggest-overlays-btn');
+    if (suggestBtn) suggestBtn.onclick = handleSuggestOverlays;
+
+    // Apply subtitle edits
+    const applyEditsBtn = document.getElementById('apply-subtitle-edits-btn');
+    if (applyEditsBtn) applyEditsBtn.onclick = applySubtitleEdits;
+
+    // Populate settings from project
+    populateSettingsForm();
+    renderRangeCuts();
+
+    NLE.initialized = true;
+}
+
+// ── PLAY/PAUSE ────────────────────────────────────────────────────
+function nleTogglePlay() {
+    const video = document.getElementById('nle-preview-video');
+    const btn = document.getElementById('nle-play-pause');
+    if (!video) return;
+    if (video.paused) {
+        video.play().catch(() => {});
+        if (btn) btn.textContent = '⏸';
+        NLE.sfxTriggered.clear();
+
+        // Start BGM preview
+        const bgmTrack = document.getElementById('bgm-track')?.value;
+        if (bgmTrack && !previewBGMAudio) {
+            previewBGMAudio = new Audio(bgmTrack);
+            previewBGMAudio.loop = true;
+            previewBGMAudio.volume = parseFloat(document.getElementById('bgm-volume')?.value || '0.15');
+        }
+        if (previewBGMAudio && previewBGMAudio.paused) previewBGMAudio.play().catch(() => {});
+    } else {
+        video.pause();
+        if (btn) btn.textContent = '▶';
+        if (previewBGMAudio && !previewBGMAudio.paused) previewBGMAudio.pause();
+    }
+}
+
+// ── TIME UPDATE → Playhead + Subtitles + SFX ──────────────────────
+function nleOnTimeUpdate() {
+    const video = document.getElementById('nle-preview-video');
+    if (!video) return;
+    const t = video.currentTime;
+
+    // Timecode
+    const tcEl = document.getElementById('nle-timecode');
+    if (tcEl) tcEl.textContent = nleFormatTimecode(t);
+
+    // Move playhead
+    const ph = document.getElementById('tl-playhead');
+    if (ph) ph.style.left = (t * NLE.zoom) + 'px';
+
+    // Auto-scroll timeline to keep playhead in view
+    const scroll = document.getElementById('tl-tracks-scroll');
+    if (scroll && !video.paused) {
+        const x = t * NLE.zoom;
+        const sl = scroll.scrollLeft;
+        const vw = scroll.clientWidth;
+        if (x < sl + 40 || x > sl + vw - 80) {
+            scroll.scrollLeft = Math.max(0, x - vw * 0.35);
+        }
+    }
+
+    // Subtitle overlay
+    if (document.getElementById('preview-sub-toggle')?.checked) {
+        nleRenderSubtitleOverlay(t);
+    } else {
+        const subEl = document.getElementById('nle-sub-overlay');
+        if (subEl) subEl.innerHTML = '';
+    }
+
+    // SFX trigger
+    if (!video.paused && document.getElementById('preview-sfx-toggle')?.checked) {
+        nleCheckSFX(t);
+    }
+
+    // BGM ducking
+    if (previewBGMAudio) {
+        const bgmVol = parseFloat(document.getElementById('bgm-volume')?.value || '0.15');
+        const duck = document.getElementById('bgm-enable-ducking')?.checked;
+        let targetVol = bgmVol;
+        if (!video.paused) {
+            if (duck && state.selectedProject) {
+                const proj = state.selectedProject;
+                const transcript = proj.aligned_transcript || proj.raw_transcript;
+                if (transcript && transcript.segments) {
+                    let minDistance = 9999.0;
+                    for (const seg of transcript.segments) {
+                        if (seg.words) {
+                            for (const w of seg.words) {
+                                if (t >= w.start && t <= w.end) {
+                                    minDistance = 0.0;
+                                    break;
+                                }
+                                const distStart = Math.abs(t - w.start);
+                                const distEnd = Math.abs(t - w.end);
+                                minDistance = Math.min(minDistance, distStart, distEnd);
+                            }
+                        }
+                        if (minDistance === 0.0) break;
+                    }
+                    if (minDistance === 0.0) {
+                        targetVol = bgmVol * 0.15;
+                    } else if (minDistance < 0.5) {
+                        const ratio = minDistance / 0.5;
+                        targetVol = bgmVol * (0.15 + 0.85 * ratio);
+                    }
+                }
+            }
+            previewBGMAudio.volume = targetVol;
+        }
+    }
+}
+
+function nleFormatTimecode(secs) {
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    const ms = Math.floor((secs % 1) * 1000);
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(ms).padStart(3,'0')}`;
+}
+
+// ── SUBTITLE OVERLAY ──────────────────────────────────────────────
+function nleRenderSubtitleOverlay(currentTime) {
+    const overlayEl = document.getElementById('nle-sub-overlay');
+    if (!overlayEl) return;
+
+    const proj = state.selectedProject;
+    if (!proj) { overlayEl.innerHTML = ''; return; }
+
+    const transcript = proj.aligned_transcript || proj.raw_transcript;
+    if (!transcript?.segments?.length) { overlayEl.innerHTML = ''; return; }
+
+    const fontFamily = document.getElementById('style-font-family')?.value || 'Noto Sans Thai';
+    const fontSize = parseInt(document.getElementById('style-font-size')?.value || '44');
+    const textColor = document.getElementById('style-text-color')?.value || '#fff';
+    const highlightColor = document.getElementById('style-highlight-color')?.value || '#FFD700';
+    const scaledFontSize = Math.max(16, Math.round(fontSize * 0.5)); // scale down for preview
+
+    const allWords = [];
+    transcript.segments.forEach(seg => {
+        if (seg.words) seg.words.forEach(w => allWords.push(w));
+    });
+    if (!allWords.length) { overlayEl.innerHTML = ''; return; }
+
+    let activeIdx = -1;
+    for (let i = 0; i < allWords.length; i++) {
+        if (currentTime >= allWords[i].start && currentTime <= allWords[i].end + 0.05) {
+            activeIdx = i; break;
+        }
+    }
+    if (activeIdx === -1) {
+        for (let i = allWords.length - 1; i >= 0; i--) {
+            if (allWords[i].end < currentTime) { activeIdx = i; break; }
+        }
+    }
+    if (activeIdx === -1) { overlayEl.innerHTML = ''; return; }
+
+    const groupStart = Math.floor(activeIdx / 5) * 5;
+    const group = allWords.slice(groupStart, Math.min(groupStart + 5, allWords.length));
+    const isThai = group.some(w => /[\u0E00-\u0E7F]/.test(w.word));
+
+    const html = group.map(w => {
+        const isActive = currentTime >= w.start && currentTime <= w.end + 0.05;
+        const color = isActive ? highlightColor : textColor;
+        const scale = isActive ? 'scale(1.1)' : 'scale(1)';
+        const clean = isThai ? w.word.replace(/\s+/g, '') : w.word;
+        return `<span style="color:${color};transform:${scale};display:inline-block;transition:all 0.07s;font-weight:800;font-size:${scaledFontSize}px;font-family:${fontFamily};text-shadow:0 2px 5px rgba(0,0,0,0.9);${isThai ? 'margin:0;letter-spacing:0' : 'margin:0 2px'}">${clean}</span>${isThai ? '' : ' '}`;
+    }).join('');
+
+    overlayEl.innerHTML = `<div style="display:inline-block;background:rgba(0,0,0,0.55);border-radius:6px;padding:4px 10px;line-height:1.4">${html}</div>`;
+}
+
+// ── SFX TRIGGER ───────────────────────────────────────────────────
+function nleCheckSFX(currentTime) {
+    const overlays = state.overlays || [];
+    overlays.forEach((o, idx) => {
+        if (o.type !== 'audio' && o.type !== 'sfx') return;
+        const key = `sfx_${idx}`;
+        if (currentTime >= o.start && currentTime < o.start + 0.25) {
+            if (!NLE.sfxTriggered.has(key)) {
+                NLE.sfxTriggered.add(key);
+                try {
+                    const a = new Audio(o.asset);
+                    a.volume = Math.min(1.0, o.volume ?? 1.0);
+                    a.play().catch(() => {});
+                } catch(e) {}
+            }
+        } else if (currentTime < o.start - 0.3) {
+            NLE.sfxTriggered.delete(key);
+        }
+    });
+}
+
+// ── TIMELINE RENDERING ────────────────────────────────────────────
+function renderNLETimeline() {
+    const duration = NLE.duration || 60;
+    const totalW = Math.max(800, duration * NLE.zoom + 200);
+
+    // Size all track elements
+    ['tl-ruler','tl-track-video','tl-track-subtitles','tl-track-overlays','tl-track-sfx'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.width = totalW + 'px';
+    });
+
+    nleRenderRuler(duration, totalW);
+    nleRenderVideoTrack(duration, totalW);
+    nleRenderSubtitleTrack(totalW);
+    nleRenderOverlayTrack(totalW);
+    nleRenderSFXTrack(totalW);
+}
+
+function nleRenderRuler(duration, totalW) {
+    const ruler = document.getElementById('tl-ruler');
+    if (!ruler) return;
+    ruler.innerHTML = '';
+    ruler.style.width = totalW + 'px';
+
+    const pxPerSec = NLE.zoom;
+    const interval = pxPerSec >= 200 ? 0.5 : pxPerSec >= 100 ? 1 : pxPerSec >= 50 ? 2 : pxPerSec >= 25 ? 5 : 10;
+    const subDiv = 5;
+    const subInterval = interval / subDiv;
+
+    for (let t = 0; t <= duration + interval; t += subInterval) {
+        const isMajor = Math.abs(t % interval) < 0.001;
+        const x = t * pxPerSec;
+        const tick = document.createElement('div');
+        tick.className = 'tl-tick';
+        tick.style.left = x + 'px';
+
+        const line = document.createElement('div');
+        line.className = 'tl-tick-line ' + (isMajor ? 'major' : 'minor');
+        tick.appendChild(line);
+
+        if (isMajor) {
+            const lbl = document.createElement('div');
+            lbl.className = 'tl-tick-label';
+            lbl.textContent = nleFormatRulerTime(t);
+            tick.appendChild(lbl);
+        }
+        ruler.appendChild(tick);
+    }
+}
+
+function nleFormatRulerTime(secs) {
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return m > 0 ? `${m}:${String(s).padStart(2,'0')}` : `${s}s`;
+}
+
+function nleRenderVideoTrack(duration, totalW) {
+    const track = document.getElementById('tl-track-video');
+    if (!track) return;
+    track.innerHTML = '';
+    track.style.width = totalW + 'px';
+    const proj = state.selectedProject;
+    const block = nleCreateBlock({
+        start: 0,
+        end: duration,
+        type: 'video',
+        label: '▶ ' + (proj?.video_name || 'Video'),
+    }, 'video', false);
+    track.appendChild(block);
+}
+
+function nleRenderSubtitleTrack(totalW) {
+    const track = document.getElementById('tl-track-subtitles');
+    if (!track) return;
+    track.innerHTML = '';
+    track.style.width = totalW + 'px';
+
+    const proj = state.selectedProject;
+    if (!proj) return;
+    const transcript = proj.aligned_transcript || proj.raw_transcript;
+    if (!transcript?.segments) return;
+
+    const allWords = [];
+    transcript.segments.forEach(seg => {
+        if (seg.words) seg.words.forEach(w => allWords.push(w));
+    });
+
+    const segments = nleGetSubtitleSegments(allWords);
+    segments.forEach((seg, idx) => {
+        const block = nleCreateBlock({
+            start: seg.start,
+            end: seg.end,
+            type: 'subtitle',
+            label: seg.text,
+            segIndex: idx,
+            segRef: seg,
+        }, 'subtitle', true);
+        track.appendChild(block);
+    });
+}
+
+function nleRenderOverlayTrack(totalW) {
+    const track = document.getElementById('tl-track-overlays');
+    if (!track) return;
+    track.innerHTML = '';
+    track.style.width = totalW + 'px';
+
+    const overlays = (state.overlays || []).filter(o => o.type === 'text' || o.type === 'watermark' || o.type === 'overlay');
+    overlays.forEach((o, idx) => {
+        const endTime = (o.end && o.end > 0) ? o.end : o.start + 2.0;
+        const block = nleCreateBlock({
+            start: o.start,
+            end: endTime,
+            type: 'overlay',
+            label: o.content || 'Text',
+            overlayIdx: idx,
+        }, 'overlay', true);
+        track.appendChild(block);
+    });
+}
+
+function nleRenderSFXTrack(totalW) {
+    const track = document.getElementById('tl-track-sfx');
+    if (!track) return;
+    track.innerHTML = '';
+    track.style.width = totalW + 'px';
+
+    const sfxItems = (state.overlays || []).filter(o => o.type === 'audio' || o.type === 'sfx');
+    sfxItems.forEach((o, idx) => {
+        const x = o.start * NLE.zoom;
+        const block = document.createElement('div');
+        block.className = 'tl-block tl-block-sfx';
+        block.style.left = x + 'px';
+        block.style.width = '28px';
+        block.title = (o.asset || '').split('/').pop().replace(/\.[^.]+$/, '');
+        block.innerHTML = '🔊';
+        block.style.fontSize = '14px';
+        block.onclick = () => {
+            // Preview click: play SFX
+            try {
+                const a = new Audio(o.asset);
+                a.volume = o.volume ?? 1.0;
+                a.play().catch(() => {});
+            } catch(e) {}
+            nleSelectBlock(block, { start: o.start, end: o.start + 0.5, type: 'sfx', label: block.title }, 'sfx');
+        };
+        track.appendChild(block);
+    });
+}
+
+// ── BLOCK FACTORY ─────────────────────────────────────────────────
+function nleCreateBlock(blockData, trackType, resizable) {
+    const el = document.createElement('div');
+    el.className = `tl-block tl-block-${trackType}`;
+
+    const x = blockData.start * NLE.zoom;
+    const w = Math.max(18, (blockData.end - blockData.start) * NLE.zoom);
+    el.style.left = x + 'px';
+    el.style.width = w + 'px';
+
+    const lbl = document.createElement('span');
+    lbl.className = 'tl-block-label';
+    lbl.textContent = blockData.label || '';
+    el.appendChild(lbl);
+
+    if (resizable) {
+        const lh = document.createElement('div');
+        lh.className = 'tl-resize-handle left';
+        lh.addEventListener('mousedown', (e) => { e.stopPropagation(); nleInitResize(e, el, blockData, 'left'); });
+        el.appendChild(lh);
+
+        const rh = document.createElement('div');
+        rh.className = 'tl-resize-handle right';
+        rh.addEventListener('mousedown', (e) => { e.stopPropagation(); nleInitResize(e, el, blockData, 'right'); });
+        el.appendChild(rh);
+    }
+
+    el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        nleSelectBlock(el, blockData, trackType);
+    });
+
+    el._nleData = blockData;
+    return el;
+}
+
+// ── RESIZE HANDLE DRAG ────────────────────────────────────────────
+function nleInitResize(e, el, blockData, side) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const origStart = blockData.start;
+    const origEnd   = blockData.end;
+
+    document.querySelectorAll('.tl-resize-handle').forEach(h => h.classList.remove('resizing'));
+    e.currentTarget.classList.add('resizing');
+
+    const onMove = (e2) => {
+        const dx = (e2.clientX - startX) / NLE.zoom;
+        if (side === 'left') {
+            blockData.start = Math.max(0, Math.min(origEnd - 0.1, origStart + dx));
+        } else {
+            blockData.end = Math.max(blockData.start + 0.1, Math.min(NLE.duration || 9999, origEnd + dx));
+        }
+        el.style.left  = (blockData.start * NLE.zoom) + 'px';
+        el.style.width = Math.max(18, (blockData.end - blockData.start) * NLE.zoom) + 'px';
+
+        // Live update inspector timing
+        if (NLE.selectedBlock === blockData) {
+            const si = document.getElementById('insp-start');
+            const ei = document.getElementById('insp-end');
+            if (si) si.value = blockData.start.toFixed(2);
+            if (ei) ei.value = blockData.end.toFixed(2);
+        }
+    };
+
+    const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.querySelectorAll('.tl-resize-handle').forEach(h => h.classList.remove('resizing'));
+
+        // Apply change to transcript data if subtitle block
+        if (blockData.type === 'subtitle' && blockData.segRef) {
+            nleRedistributeWords(blockData.segRef, blockData.start, blockData.end);
+        }
+        showToast('⏱ Timing adjusted', 'success');
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+}
+
+// ── BLOCK SELECT → INSPECTOR ──────────────────────────────────────
+function nleSelectBlock(el, blockData, trackType) {
+    document.querySelectorAll('.tl-block.selected').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    NLE.selectedBlock = blockData;
+    NLE.selectedTrack = trackType;
+
+    // Show block form
+    const emptyEl = document.getElementById('insp-empty-state');
+    const formEl  = document.getElementById('insp-block-form');
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (formEl)  formEl.style.display = 'flex';
+
+    // Badge color
+    const badge = document.getElementById('insp-block-badge');
+    const colors = { video:'#2563eb', subtitle:'#059669', overlay:'#d97706', sfx:'#7c3aed' };
+    if (badge) {
+        badge.textContent = trackType.toUpperCase();
+        badge.style.background = colors[trackType] || '#6b7280';
+    }
+
+    // Fields
+    const textEl  = document.getElementById('insp-text');
+    const startEl = document.getElementById('insp-start');
+    const endEl   = document.getElementById('insp-end');
+    if (textEl) { textEl.value = blockData.label || ''; textEl.disabled = (trackType === 'video'); }
+    if (startEl) startEl.value = blockData.start.toFixed(2);
+    if (endEl)   endEl.value   = blockData.end.toFixed(2);
+
+    // Show/hide Pixabay search panel for overlay block type
+    const pixabaySec = document.getElementById('insp-pixabay-section');
+    if (pixabaySec) {
+        if (trackType === 'overlay') {
+            pixabaySec.style.display = 'block';
+            
+            // Populate key input if saved in localStorage or use default user key
+            const savedKey = localStorage.getItem('pixabay_api_key') || '55845643-094149992ad8aa500c1909466';
+            const keyInput = document.getElementById('pixabay-api-key-input');
+            if (keyInput) keyInput.value = savedKey;
+
+            // Show current selection preview if any
+            const assetUrl = blockData.asset || '';
+            const previewWrap = document.getElementById('pixabay-selected-preview');
+            const previewName = document.getElementById('pixabay-selected-filename');
+            if (assetUrl.startsWith('http')) {
+                if (previewWrap) previewWrap.style.display = 'flex';
+                if (previewName) previewName.innerText = assetUrl.split('/').pop().split('?')[0];
+            } else {
+                if (previewWrap) previewWrap.style.display = 'none';
+            }
+        } else {
+            pixabaySec.style.display = 'none';
+        }
+    }
+
+    // Switch to Edit tab
+    document.querySelectorAll('.insp-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.insp-content').forEach(c => c.classList.remove('active'));
+    const editTab  = document.querySelector('.insp-tab[data-tab="edit"]');
+    const editContent = document.getElementById('insp-tab-edit');
+    if (editTab) editTab.classList.add('active');
+    if (editContent) editContent.classList.add('active');
+}
+
+// ── INSPECTOR APPLY ───────────────────────────────────────────────
+function nleApplyBlockEdit() {
+    const bd = NLE.selectedBlock;
+    if (!bd) return;
+
+    const newText  = document.getElementById('insp-text')?.value  || '';
+    const newStart = parseFloat(document.getElementById('insp-start')?.value || '0');
+    const newEnd   = parseFloat(document.getElementById('insp-end')?.value   || '0');
+
+    if (isNaN(newStart) || isNaN(newEnd) || newStart >= newEnd) {
+        showToast('⚠ Invalid timing values', 'error'); return;
+    }
+
+    bd.label = newText;
+    const oldStart = bd.start, oldEnd = bd.end;
+    bd.start = newStart;
+    bd.end   = newEnd;
+
+    if (bd.type === 'subtitle' && bd.segRef) {
+        nleRedistributeWords(bd.segRef, newStart, newEnd);
+        bd.segRef.text = newText;
+    }
+    if (bd.type === 'overlay' && bd.overlayIdx !== undefined && state.overlays[bd.overlayIdx]) {
+        state.overlays[bd.overlayIdx].start   = newStart;
+        state.overlays[bd.overlayIdx].end     = newEnd;
+        state.overlays[bd.overlayIdx].content = newText;
+    }
+
+    renderNLETimeline();
+    showToast('✓ Block updated', 'success');
+}
+
+// ── INSPECTOR DELETE ──────────────────────────────────────────────
+function nleDeleteBlock() {
+    const bd = NLE.selectedBlock;
+    if (!bd || NLE.selectedTrack === 'video') return;
+
+    if (NLE.selectedTrack === 'overlay' && bd.overlayIdx !== undefined) {
+        state.overlays.splice(bd.overlayIdx, 1);
+    } else if (NLE.selectedTrack === 'sfx' && bd.overlayIdx !== undefined) {
+        state.overlays.splice(bd.overlayIdx, 1);
+    }
+
+    NLE.selectedBlock = null;
+    const emptyEl = document.getElementById('insp-empty-state');
+    const formEl  = document.getElementById('insp-block-form');
+    if (emptyEl) emptyEl.style.display = 'flex';
+    if (formEl)  formEl.style.display  = 'none';
+
+    renderNLETimeline();
+    showToast('�� Block deleted', 'info');
+}
+
+// ── SUBTITLE SEGMENTATION ─────────────────────────────────────────
+function nleGetSubtitleSegments(allWords, wordsPerSeg = 5) {
+    const segs = [];
+    for (let i = 0; i < allWords.length; i += wordsPerSeg) {
+        const group = allWords.slice(i, i + wordsPerSeg);
+        if (!group.length) continue;
+        const isThai = group.some(w => /[\u0E00-\u0E7F]/.test(w.word));
+        segs.push({
+            start: group[0].start,
+            end:   group[group.length - 1].end,
+            text:  group.map(w => isThai ? w.word.replace(/\s+/g,'') : w.word).join(isThai ? '' : ' '),
+            words: group,
+        });
+    }
+    return segs;
+}
+
+function nleRedistributeWords(seg, newStart, newEnd) {
+    const origDur = seg.end - seg.start;
+    const newDur  = newEnd  - newStart;
+    const scale   = origDur > 0 ? newDur / origDur : 1;
+    if (seg.words) {
+        seg.words.forEach(w => {
+            const relS = (w.start - seg.start) * scale;
+            const relE = (w.end   - seg.start) * scale;
+            w.start = Math.max(0, newStart + relS);
+            w.end   = Math.max(w.start + 0.01, newStart + relE);
+        });
+    }
+    seg.start = newStart;
+    seg.end   = newEnd;
+}
+
+// ── RENDER DRAWER ─────────────────────────────────────────────────
+function nleOpenRenderDrawer() {
+    const drawer = document.getElementById('render-drawer');
+    if (drawer) {
+        drawer.style.display = 'flex';
+        // Init progress ring inside drawer
+        const circ = document.getElementById('render-circle-progress');
+        if (circ && !circ._initDone) {
+            circ._initDone = true;
+            const r = circ.r.baseVal.value;
+            const c = r * 2 * Math.PI;
+            circ.style.strokeDasharray  = `${c} ${c}`;
+            circ.style.strokeDashoffset = c;
+            circleCircumference = c;
+        }
+        renderRangeCuts();
+    }
+}
+
+function nleCloseRenderDrawer() {
+    const drawer = document.getElementById('render-drawer');
+    if (drawer) drawer.style.display = 'none';
+}
+
+// Override setProgress to also initialize the SVG ring if needed
+const _origSetProgress = setProgress;
+function setProgress(percent) {
+    const circ = document.getElementById('render-circle-progress');
+    if (circ) {
+        const r = circ.r.baseVal.value;
+        const c = r * 2 * Math.PI;
+        const offset = c - (percent / 100) * c;
+        circ.style.strokeDasharray  = `${c} ${c}`;
+        circ.style.strokeDashoffset = offset;
+    }
+    const pct = document.getElementById('render-progress-percent');
+    if (pct) pct.innerText = `${Math.round(percent)}%`;
+}
+
+
+// ── PIXABAY INTEGRATION ───────────────────────────────────────────
+function togglePixabayKeyInput() {
+    const wrapper = document.getElementById('pixabay-key-wrapper');
+    if (wrapper) {
+        wrapper.style.display = wrapper.style.display === 'none' ? 'flex' : 'none';
+    }
+}
+
+async function searchPixabay() {
+    const keyInput = document.getElementById('pixabay-api-key-input');
+    const queryInput = document.getElementById('pixabay-search-input');
+    const typeSelect = document.getElementById('pixabay-search-type');
+    const grid = document.getElementById('pixabay-results-grid');
+
+    if (!queryInput || !grid) return;
+
+    const key = (keyInput && keyInput.value.trim()) || localStorage.getItem('pixabay_api_key') || '55845643-094149992ad8aa500c1909466';
+    localStorage.setItem('pixabay_api_key', key); // Save key
+    if (keyInput && !keyInput.value) keyInput.value = key;
+
+    const query = queryInput.value.trim();
+    if (!query) {
+        showToast("🔍 Enter a search query first", "info");
+        return;
+    }
+
+    grid.innerHTML = '<span style="grid-column:span 3; font-size:10px; color:var(--text-secondary); text-align:center; padding:10px 0;">Searching...</span>';
+
+    try {
+        const type = typeSelect ? typeSelect.value : 'photo';
+        let url = `https://pixabay.com/api/?key=${key}&q=${encodeURIComponent(query)}&per_page=12`;
+        if (type === 'video') {
+            url = `https://pixabay.com/api/videos/?key=${key}&q=${encodeURIComponent(query)}&per_page=12`;
+        }
+
+        const resp = await fetch(url);
+        if (!resp.ok) {
+            throw new Error(`Pixabay API error: ${resp.status}`);
+        }
+
+        const data = await resp.json();
+        const hits = data.hits || [];
+        grid.innerHTML = '';
+
+        if (hits.length === 0) {
+            grid.innerHTML = '<span style="grid-column:span 3; font-size:10px; color:var(--text-muted); text-align:center; padding:10px 0;">No results found.</span>';
+            return;
+        }
+
+        hits.forEach(hit => {
+            const item = document.createElement('div');
+            item.style.position = 'relative';
+            item.style.cursor = 'pointer';
+            item.style.borderRadius = '4px';
+            item.style.overflow = 'hidden';
+            item.style.background = '#1a202c';
+            item.style.height = '50px';
+            item.style.border = '1px solid var(--nle-border)';
+            item.style.transition = 'border-color 0.12s';
+            item.title = hit.tags || '';
+
+            let previewUrl = hit.previewURL || '';
+            let targetUrl = hit.webformatURL || '';
+
+            if (type === 'video') {
+                previewUrl = hit.userImageURL || 'https://pixabay.com/static/img/logo_square.png'; // fallback preview
+                targetUrl = hit.videos?.tiny?.url || hit.videos?.medium?.url || '';
+            }
+
+            item.innerHTML = `<img src="${previewUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+            
+            item.onclick = async () => {
+                // Remove active classes
+                grid.querySelectorAll('div').forEach(d => d.style.borderColor = 'var(--nle-border)');
+                item.style.borderColor = 'var(--color-primary)';
+
+                // Update selected filename preview
+                const pdiv = document.getElementById('pixabay-selected-preview');
+                const pf = document.getElementById('pixabay-selected-filename');
+                if (pdiv) pdiv.style.display = 'flex';
+                if (pf) pf.innerText = targetUrl.split('/').pop().split('?')[0];
+
+                // Download the asset to the server locally
+                let localAsset = targetUrl;
+                try {
+                    const dlResp = await fetch(`${API_BASE}/v1/download-asset?url=${encodeURIComponent(targetUrl)}`);
+                    if (dlResp.ok) {
+                        const dlData = await dlResp.json();
+                        localAsset = dlData.local_path;
+                    }
+                } catch (e) {
+                    console.warn("Failed to download asset to server, using remote URL", e);
+                }
+
+                // Update selected block data
+                if (NLE.selectedBlock) {
+                    NLE.selectedBlock.asset = localAsset;
+                    NLE.selectedBlock.type = type === 'video' ? 'video' : 'image';
+                    NLE.selectedBlock.label = query; // update label to match query
+
+                    // Update corresponding overlay list element in state
+                    const idx = NLE.selectedBlock.overlayIdx;
+                    if (idx !== undefined && state.overlays[idx]) {
+                        state.overlays[idx].asset = localAsset;
+                        state.overlays[idx].type = type === 'video' ? 'video' : 'image';
+                        state.overlays[idx].content = query;
+                    }
+                    
+                    // Render NLE
+                    renderNLETimeline();
+                    showToast(`✓ Downloaded & selected Pixabay ${type}!`, 'success');
+                }
+            };
+
+            grid.appendChild(item);
+        });
+
+    } catch (e) {
+        console.error("Pixabay search error", e);
+        grid.innerHTML = `<span style="grid-column:span 3; font-size:10px; color:#ef4444; text-align:center; padding:10px 0;">Error: ${e.message}</span>`;
+    }
+}
+
+// Bind search actions
+const searchBtn = document.getElementById('pixabay-search-btn');
+if (searchBtn) searchBtn.onclick = searchPixabay;
+const searchInp = document.getElementById('pixabay-search-input');
+if (searchInp) {
+    searchInp.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            searchPixabay();
+        }
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  AUTO-EDIT BUTTON — One-click transcribe + orchestrate + render
+// ══════════════════════════════════════════════════════════════════
+
+async function handleAutoEdit() {
+    const video = state.selectedVideo;
+    if (!video) {
+        showToast("⚠ Select or upload a video first.", "error");
+        return;
+    }
+
+    const mode = document.getElementById('auto-edit-mode')?.value || 'short';
+    const clipCount = parseInt(document.getElementById('auto-edit-clip-count')?.value || '3');
+    const statusEl = document.getElementById('auto-edit-summary');
+    const btn = document.getElementById('auto-edit-btn');
+    if (btn) { btn.disabled = true; btn.innerText = '⏳ Processing...'; }
+    if (statusEl) statusEl.innerText = '🚀 Starting auto-edit pipeline...';
+
+    try {
+        // 1. Create project
+        let projectId;
+        const projResp = await fetch(`${API_BASE}/v1/projects`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ video_name: video.filename, source_type: video.source_type })
+        });
+        const project = await projResp.json();
+        projectId = project.project_id;
+        state.selectedProject = project;
+        if (statusEl) statusEl.innerText = '📝 Project created, starting transcription...';
+
+        // 2. Call auto-edit endpoint (transcribes + orchestrates with AI)
+        const autoResp = await fetch(`${API_BASE}/v1/projects/${projectId}/transcribe`, {
+            method: 'POST'
+        });
+        const autoData = await autoResp.json();
+        if (statusEl) statusEl.innerText = '🔊 Transcribing with Whisper...';
+
+        // 3. Poll until transcription is ready
+        await new Promise((resolve, reject) => {
+            const poll = setInterval(async () => {
+                try {
+                    const resp = await fetch(`${API_BASE}/v1/projects/${projectId}`);
+                    const proj = await resp.json();
+                    state.selectedProject = proj;
+                    if (proj.status === 'ready') {
+                        clearInterval(poll);
+                        state.overlays = proj.overlays || [];
+                        if (statusEl) statusEl.innerText = '✅ Transcription & AI orchestration complete!';
+                        resolve();
+                    } else if (proj.status === 'failed') {
+                        clearInterval(poll);
+                        reject(new Error('Transcription failed'));
+                    } else {
+                        if (statusEl) statusEl.innerText = `⏳ Processing... (${proj.status})`;
+                    }
+                } catch (e) {
+                    // Continue polling
+                }
+            }, 2000);
+        });
+
+        // 4. Orchestrate for AI overlays/SFX/BGM if not already set
+        if (!state.overlays || state.overlays.length === 0) {
+            try {
+                await fetch(`${API_BASE}/v1/projects/${projectId}/orchestrate`, { method: 'POST' });
+                const resp = await fetch(`${API_BASE}/v1/projects/${projectId}`);
+                const proj = await resp.json();
+                state.selectedProject = proj;
+                state.overlays = proj.overlays || [];
+            } catch (e) {
+                console.warn("Orchestration failed, continuing with defaults", e);
+            }
+        }
+
+        // 5. Set clip ranges
+        if (state.selectedProject.render_plan && state.selectedProject.render_plan.clip_ranges) {
+            state.clipRanges = state.selectedProject.render_plan.clip_ranges;
+        } else {
+            state.clipRanges = [{ start: 0, end: Math.min(video.duration_seconds || 60, 30) }];
+        }
+
+        // 6. Navigate to NLE editor
+        loadProjects();
+        goToStep(3);
+        showToast('✅ Auto-edit complete! Review in the editor, then export.', 'success');
+    } catch (e) {
+        showToast("❌ Auto-edit failed: " + e.message, "error");
+        if (statusEl) statusEl.innerText = '❌ Error: ' + e.message;
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerText = '⚡ Auto Edit Selected Video'; }
+    }
+}
+
+// Bind auto-edit button
+const autoEditBtn = document.getElementById('auto-edit-btn');
+if (autoEditBtn) {
+    autoEditBtn.addEventListener('click', handleAutoEdit);
+}

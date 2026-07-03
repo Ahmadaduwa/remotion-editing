@@ -1,9 +1,33 @@
-node_modules
-data
-output
-*.db
+# --- Virtual Environments ---
+.venv/
+venv/
+env/
+
+# --- Python Cache ---
+__pycache__/
+*.pyc
+*.pyo
+
+# --- Secrets & Config ---
+.env
+.env.local
+*.sqlite3
+data/jobs.db
+
+# --- Node ---
+node_modules/
+
+# --- Large Media & Artifacts ---
+assets/videos/
+output/
 *.mp4
-*.MOV
-.env*
-build
-dist
+*.mov
+*.avi
+
+# --- Generated / Downloaded Data ---
+data/models/
+data/logs/
+
+# --- OS Files ---
+.DS_Store
+Thumbs.db

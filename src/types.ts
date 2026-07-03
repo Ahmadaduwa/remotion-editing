@@ -10,7 +10,7 @@ export interface WordTimestamp {
 }
 
 export interface OverlayProps {
-  type: "text" | "watermark" | "audio" | "sfx";
+  type: "text" | "watermark" | "audio" | "sfx" | "image" | "video";
   content?: string;
   asset?: string;
   position?: "top" | "center" | "bottom" | "bottom-right";
@@ -18,6 +18,7 @@ export interface OverlayProps {
   end?: number;    // seconds (-1 = entire duration)
   style?: "hook" | "cta" | "default";
   volume?: number;
+  width?: string | number;
 }
 
 export interface SubtitleStyleSettings {

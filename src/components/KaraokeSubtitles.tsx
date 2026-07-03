@@ -117,6 +117,11 @@ export const KaraokeSubtitles: React.FC<KaraokeSubtitlesProps> = ({
           const wordDuration = word.end - word.start;
           const midPoint = word.start + Math.min(0.08, wordDuration * 0.5);
 
+          // Determine if this word contains Thai characters
+          const isThaiWord = /[\u0e00-\u0e7f]/.test(word.word);
+          // Remove any spaces in Thai words; keep English words as‑is
+          const displayWord = isThaiWord ? word.word.replace(/\s+/g, "") : word.word;
+
           // Apply active word animations
           let transform = "scale(1)";
           if (isActive) {
@@ -169,9 +174,10 @@ export const KaraokeSubtitles: React.FC<KaraokeSubtitlesProps> = ({
                 transition: "color 0.05s ease, transform 0.08s ease-out",
                 display: "inline-block",
                 lineHeight: 1.4,
+                margin: isThaiWord ? "0" : undefined,
               }}
             >
-              {word.word}
+              {displayWord}
             </span>
           );
         })}

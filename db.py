@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS projects (
     corrected_text       TEXT,
     aligned_transcript_json TEXT,
     overlays_json        TEXT,
+    render_plan_json     TEXT,
     subtitle_style_json  TEXT,
     bgm_settings_json    TEXT,
     created_at           TEXT NOT NULL,
@@ -102,6 +103,13 @@ async def init_db() -> None:
         await db.execute("SELECT bgm_settings_json FROM projects LIMIT 1")
     except aiosqlite.OperationalError:
         await db.execute("ALTER TABLE projects ADD COLUMN bgm_settings_json TEXT")
+        await db.commit()
+
+    # Migrate projects to add render_plan_json if missing
+    try:
+        await db.execute("SELECT render_plan_json FROM projects LIMIT 1")
+    except aiosqlite.OperationalError:
+        await db.execute("ALTER TABLE projects ADD COLUMN render_plan_json TEXT")
         await db.commit()
 
 
@@ -267,8 +275,8 @@ async def create_project(project_id: str, video_name: str) -> dict:
     db = await get_db()
     await db.execute(
         """INSERT INTO projects
-           (project_id, video_name, status, raw_transcript_json, corrected_text, aligned_transcript_json, overlays_json, subtitle_style_json, bgm_settings_json, created_at, updated_at)
-           VALUES (?, ?, 'uploaded', NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)""",
+           (project_id, video_name, status, raw_transcript_json, corrected_text, aligned_transcript_json, overlays_json, render_plan_json, subtitle_style_json, bgm_settings_json, created_at, updated_at)
+           VALUES (?, ?, 'uploaded', NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)""",
         (project_id, video_name, now, now),
     )
     await db.commit()
@@ -280,6 +288,7 @@ async def create_project(project_id: str, video_name: str) -> dict:
         "corrected_text": None,
         "aligned_transcript": None,
         "overlays": None,
+        "render_plan": None,
         "subtitle_style": None,
         "bgm_settings": None,
         "created_at": now,
@@ -303,6 +312,7 @@ async def update_project(
     corrected_text: Optional[str] = None,
     aligned_transcript: Optional[dict] = None,
     overlays: Optional[list] = None,
+    render_plan: Optional[dict] = None,
     subtitle_style: Optional[dict] = None,
     bgm_settings: Optional[dict] = None,
 ) -> None:
@@ -323,6 +333,9 @@ async def update_project(
     if overlays is not None:
         sets.append("overlays_json = ?")
         vals.append(json.dumps(overlays, ensure_ascii=False))
+    if render_plan is not None:
+        sets.append("render_plan_json = ?")
+        vals.append(json.dumps(render_plan, ensure_ascii=False))
     if subtitle_style is not None:
         sets.append("subtitle_style_json = ?")
         vals.append(json.dumps(subtitle_style, ensure_ascii=False))
@@ -357,7 +370,7 @@ async def delete_project(project_id: str) -> bool:
 
 def _project_row_to_dict(row) -> dict:
     d = dict(row)
-    for field in ["raw_transcript_json", "aligned_transcript_json", "overlays_json", "subtitle_style_json", "bgm_settings_json"]:
+    for field in ["raw_transcript_json", "aligned_transcript_json", "overlays_json", "render_plan_json", "subtitle_style_json", "bgm_settings_json"]:
         key = field.replace("_json", "")
         if field in d and d[field] is not None:
             try:
@@ -368,4 +381,3 @@ def _project_row_to_dict(row) -> dict:
             d[key] = None
         d.pop(field, None)
     return d
-

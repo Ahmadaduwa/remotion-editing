@@ -169,8 +169,36 @@ async def _process_job(task_id: str) -> None:
                 logger.info(f"[{task_id}] AI correction applied")
             await db.update_job(task_id, progress_percent=35)
 
+        # Generate automatic edit plan when the job does not already include one.
+        generated_plan = None
+        if not params.get("clip_ranges") or not params.get("overlays") or not params.get("bgm_settings"):
+            generated_plan = await asyncio.to_thread(
+                ai_corrector.orchestrate_video_edit,
+                transcript,
+                params.get("mode", "short"),
+                max(1, len(params.get("clip_ranges", [])) or 3),
+            )
+            if not params.get("clip_ranges"):
+                params["clip_ranges"] = generated_plan.get("clip_ranges", [])
+            if not params.get("overlays"):
+                params["overlays"] = generated_plan.get("overlays", [])
+            if not params.get("bgm_settings"):
+                params["bgm_settings"] = generated_plan.get("bgm_settings", {})
+            if not params.get("subtitle_style"):
+                params["subtitle_style"] = generated_plan.get("subtitle_style", "karaoke")
+            if not params.get("subtitle_style_settings"):
+                params["subtitle_style_settings"] = generated_plan.get("subtitle_style_settings")
+            if params.get("trim_silence") is None:
+                params["trim_silence"] = generated_plan.get("trim_silence", True)
+            if params.get("auto_zoom") is None:
+                params["auto_zoom"] = generated_plan.get("auto_zoom", True)
+            await db.update_job(
+                task_id,
+                progress_percent=36,
+            )
+
         # ── Phase 2: Pre-process clips with ffmpeg (30% → 50%) ──
-        clip_ranges = params.get("clip_ranges", [])
+        clip_ranges = params.get("clip_ranges", []) or (generated_plan or {}).get("clip_ranges", [])
         trim_silence = params.get("trim_silence", True)
         smart_crop = params.get("smart_crop", True)
         mode = params.get("mode", "short")
@@ -217,6 +245,12 @@ async def _process_job(task_id: str) -> None:
             # Build subtitle data from transcript, adjusted to preprocessed timeline
             subtitles = _build_subtitle_data(transcript, clip_ranges, trim_silence)
 
+            # Download any remote HTTP assets in overlays (e.g. from Pixabay)
+            overlays_list = params.get("overlays", []) or (generated_plan or {}).get("overlays", [])
+            _download_remote_assets(overlays_list)
+
+            bgm_settings = params.get("bgm_settings") or (generated_plan or {}).get("bgm_settings")
+
             input_props = {
                 "src": f"job_{task_id}.mp4",
                 "fps": fps,
@@ -226,9 +260,9 @@ async def _process_job(task_id: str) -> None:
                 "mode": mode,
                 "subtitleStyle": params.get("subtitle_style", "karaoke"),
                 "subtitleStyleSettings": params.get("subtitle_style_settings"),
-                "bgmSettings": params.get("bgm_settings"),
+                "bgmSettings": bgm_settings,
                 "subtitles": subtitles,
-                "overlays": params.get("overlays", []),
+                "overlays": overlays_list,
                 "autoZoom": params.get("auto_zoom", True),
             }
 
@@ -832,3 +866,48 @@ async def _dedupe_check(task_id: str, output_path: str) -> None:
             f"[{task_id}] Dedup: old job {old_task_id} had same output_path "
             f"but file no longer exists, skipping deletion"
         )
+
+
+def _download_remote_assets(overlays: list[dict]) -> None:
+    """Downloads remote HTTP assets in overlays to local public/assets/visuals/ folder."""
+    import urllib.request
+    import os
+    import hashlib
+    from pathlib import Path
+
+    visuals_dir = PROJECT_DIR / "public" / "assets" / "visuals"
+    visuals_dir.mkdir(parents=True, exist_ok=True)
+
+    for o in overlays:
+        asset = o.get("asset", "")
+        if asset.startswith("http://") or asset.startswith("https://"):
+            # Determine extension
+            ext = ".jpg"
+            if ".png" in asset.lower(): ext = ".png"
+            elif ".mp4" in asset.lower(): ext = ".mp4"
+            elif ".gif" in asset.lower(): ext = ".gif"
+            elif ".webp" in asset.lower(): ext = ".webp"
+
+            # Clean filename from URL
+            h = hashlib.md5(asset.encode()).hexdigest()[:12]
+            local_filename = f"pixabay_{h}{ext}"
+            local_path = visuals_dir / local_filename
+
+            if not local_path.exists():
+                try:
+                    logger.info(f"Downloading remote asset {asset} to {local_path}")
+                    # Download using urllib with user-agent to prevent blocks
+                    req = urllib.request.Request(
+                        asset,
+                        headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+                    )
+                    with urllib.request.urlopen(req, timeout=15) as response:
+                        with open(local_path, "wb") as f:
+                            f.write(response.read())
+                except Exception as e:
+                    logger.error(f"Failed to download remote asset {asset}: {e}")
+                    continue
+
+            # Update asset path in overlay object to be relative to public/
+            o["asset"] = f"assets/visuals/{local_filename}"
+

@@ -5,7 +5,7 @@
  * handles custom text overlays, optional watermarks, and applies optional Ken Burns zoom.
  */
 import React from "react";
-import { AbsoluteFill, OffthreadVideo, staticFile, useVideoConfig, Audio, Sequence, useCurrentFrame } from "remotion";
+import { AbsoluteFill, OffthreadVideo, staticFile, useVideoConfig, Audio, Sequence, useCurrentFrame, Img } from "remotion";
 import type { VideoCompositionProps } from "../types";
 import { KaraokeSubtitles } from "../components/KaraokeSubtitles";
 import { StaticSubtitles } from "../components/StaticSubtitles";
@@ -29,8 +29,8 @@ export const VideoComposition: React.FC<VideoCompositionProps> = ({
   const totalDurationSeconds = durationInFrames / fps;
   const isShort = mode === "short";
 
-  // Use staticFile to refer to the public/job_{task_id}.mp4 video file
-  const videoSrc = staticFile(src);
+  // Use a placeholder video when no input source is provided during smoke tests.
+  const videoSrc = staticFile(src || "assets/videos/placeholder.mp4");
 
   // Dynamic BGM volume calculation with smooth Auto-Ducking
   let bgmVolume = bgmSettings?.volume !== undefined ? bgmSettings.volume : 0.0;
@@ -110,6 +110,56 @@ export const VideoComposition: React.FC<VideoCompositionProps> = ({
               position={watermark.position || "bottom-right"}
             />
           ))}
+
+      {/* 4.5. Image/Video Visual Overlays */}
+      {overlays &&
+        overlays
+          .filter((o) => o.type === "image" || o.type === "video")
+          .map((item, index) => {
+            const startFrame = Math.round(item.start * fps);
+            const durationInFrames = item.end !== undefined && item.end !== -1
+              ? Math.round((item.end - item.start) * fps)
+              : Math.round(2 * fps); // default 2 seconds
+
+            const src = staticFile(item.asset || "");
+
+            return (
+              <Sequence
+                key={`visual-overlay-${index}`}
+                from={startFrame}
+                durationInFrames={durationInFrames}
+              >
+                <AbsoluteFill style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                  {item.type === "image" ? (
+                    <Img
+                      src={src}
+                      style={{
+                        width: item.width || "50%",
+                        height: "auto",
+                        maxWidth: "90%",
+                        borderRadius: 12,
+                        boxShadow: "0 10px 30px rgba(0,0,0,0.6)",
+                        border: "2px solid rgba(255,255,255,0.2)",
+                      }}
+                    />
+                  ) : (
+                    <OffthreadVideo
+                      src={src}
+                      style={{
+                        width: item.width || "50%",
+                        height: "auto",
+                        maxWidth: "90%",
+                        borderRadius: 12,
+                        boxShadow: "0 10px 30px rgba(0,0,0,0.6)",
+                        border: "2px solid rgba(255,255,255,0.2)",
+                      }}
+                      muted
+                    />
+                  )}
+                </AbsoluteFill>
+              </Sequence>
+            );
+          })}
 
       {/* 5. Sound Effects (Audio Overlays) */}
       {overlays &&

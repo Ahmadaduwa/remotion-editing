@@ -148,7 +148,7 @@ def transcribe_video(video_path: str, language: Optional[str] = "th") -> dict:
         transcribe_kwargs = {
             "word_timestamps": True,
             "vad_filter": True,
-            "vad_parameters": {"min_silence_duration_ms": 300},
+            "vad_parameters": {"min_silence_duration_ms": 1000},
         }
         if language:
             transcribe_kwargs["language"] = language
@@ -213,13 +213,13 @@ def transcribe_video(video_path: str, language: Optional[str] = "th") -> dict:
                 "words": words,
             })
 
-        # Detect silence gaps (>0.4s between words)
+        # Detect silence gaps (>=0.75s between words)
         silence_gaps = []
         for i in range(1, len(all_words_flat)):
             prev_end = all_words_flat[i - 1]["end"]
             curr_start = all_words_flat[i]["start"]
             gap = curr_start - prev_end
-            if gap > 0.4:
+            if gap > 0.75:
                 silence_gaps.append({
                     "start": round(prev_end, 3),
                     "end": round(curr_start, 3),

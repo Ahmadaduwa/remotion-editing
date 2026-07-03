@@ -23,7 +23,8 @@ import thai_fixer
 import ai_corrector
 
 # ─── Logging setup ───
-LOG_DIR = Path("/app/data/logs")
+PROJECT_DIR = Path(os.environ.get("PROJECT_DIR", "/app"))
+LOG_DIR = Path(os.environ.get("LOG_DIR", str(PROJECT_DIR / "data" / "logs")))
 LOG_DIR.mkdir(exist_ok=True, parents=True)
 logging.basicConfig(
     level=logging.INFO,
@@ -42,10 +43,11 @@ file_handler.setFormatter(
 logging.getLogger().addHandler(file_handler)
 
 # ─── Paths ───
-INPUT_DIR = Path(os.environ.get("INPUT_DIR", "/app/input"))
-OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", "/app/output"))
-UPLOADS_DIR = Path("/app/data/uploads")
+INPUT_DIR = Path(os.environ.get("INPUT_DIR", str(PROJECT_DIR / "input")))
+OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", str(PROJECT_DIR / "output")))
+UPLOADS_DIR = Path(os.environ.get("UPLOADS_DIR", str(PROJECT_DIR / "data" / "uploads")))
 UPLOADS_DIR.mkdir(exist_ok=True, parents=True)
+PUBLIC_DIR = Path(os.environ.get("PUBLIC_DIR", str(PROJECT_DIR / "public")))
 
 
 # ─── Pydantic Models ───
@@ -63,18 +65,23 @@ class Overlay(BaseModel):
     start: float = 0
     end: float = -1                     # -1 = entire duration
     style: str = "default"              # "hook"|"cta"|"default"
+    volume: float = 1.0
+    width: str = "50%"
 
 
 class JobRequest(BaseModel):
     input_video: str
     output_name: str
     mode: str = "short"                 # "short" (9:16) | "long" (16:9)
-    clip_ranges: list[ClipRange]
+    clip_ranges: list[ClipRange] = Field(default_factory=list)
     subtitle_style: str = "karaoke"     # "karaoke"|"static"|"none"
     overlays: list[Overlay] = Field(default_factory=list)
     trim_silence: bool = True
     auto_zoom: bool = True
     language: Optional[str] = "th"      # optional transcription language, default "th"
+    bgm_settings: Optional[dict] = None
+    subtitle_style_settings: Optional[dict] = None
+    auto_edit: bool = True
 
 
 class AutoClipRequest(BaseModel):
@@ -93,12 +100,12 @@ async def lifespan(app: FastAPI):
     logger.info("Database initialized")
     
     # Ensure public/assets is symlinked to /app/assets so staticFile() works
-    public_dir = Path("/app/public")
+    public_dir = PUBLIC_DIR
     public_dir.mkdir(exist_ok=True)
     public_assets = public_dir / "assets"
     if not public_assets.exists():
         try:
-            os.symlink("/app/assets", str(public_assets))
+            os.symlink(str(Path(os.environ.get("ASSET_ROOT", str(PROJECT_DIR / "assets")))), str(public_assets))
             logger.info("Symlinked /app/assets to public/assets")
         except Exception as e:
             logger.error(f"Failed to symlink assets: {e}")
@@ -167,13 +174,13 @@ async def create_job(req: JobRequest):
     if req.subtitle_style not in ("karaoke", "static", "none"):
         raise HTTPException(400, f"Invalid subtitle_style: {req.subtitle_style}")
 
-    # Validate clip_ranges
-    if not req.clip_ranges:
-        raise HTTPException(400, "At least one clip_range is required")
-
-    for i, cr in enumerate(req.clip_ranges):
-        if cr.end <= cr.start:
-            raise HTTPException(400, f"clip_ranges[{i}]: end must be > start")
+    # Validate clip_ranges only when the caller provides them explicitly.
+    if req.clip_ranges:
+        for i, cr in enumerate(req.clip_ranges):
+            if cr.end <= cr.start:
+                raise HTTPException(400, f"clip_ranges[{i}]: end must be > start")
+    elif not req.auto_edit:
+        raise HTTPException(400, "At least one clip_range is required when auto_edit is disabled")
 
     # Generate task ID
     task_id = str(uuid.uuid4())
@@ -181,6 +188,8 @@ async def create_job(req: JobRequest):
 
     # Store job in database
     params = req.model_dump()
+    if not params.get("clip_ranges") and req.auto_edit:
+        params["clip_ranges"] = []
     await db.create_job(
         task_id=task_id,
         input_path=str(input_path),
@@ -193,8 +202,6 @@ async def create_job(req: JobRequest):
 
     logger.info(f"Job {task_id} queued: {req.input_video} → {req.output_name}")
     return {"task_id": task_id, "status": "queued"}
-
-
 @app.get("/v1/jobs/{task_id}")
 async def get_job(task_id: str):
     """Get job status, progress, and output path."""
@@ -246,6 +253,37 @@ async def list_outputs():
         return files
     files = await asyncio.to_thread(get_outputs)
     return {"files": files}
+
+
+@app.get("/v1/assets")
+async def list_assets():
+    """List available local assets for AI planning and rendering."""
+    def scan_assets():
+        asset_root = Path("/app/assets")
+        result = {"bgm": [], "sfx": [], "visual": []}
+
+        scan_specs = [
+            ("bgm", "bgm", (".mp3", ".wav", ".m4a", ".aac", ".ogg")),
+            ("sfx", "sfx", (".mp3", ".wav", ".m4a", ".aac", ".ogg")),
+            ("Images", "visual", (".png", ".jpg", ".jpeg", ".webp", ".gif")),
+            ("videos", "visual", (".mp4", ".mov", ".webm", ".mkv")),
+        ]
+
+        for subdir, key, exts in scan_specs:
+            root = asset_root / subdir
+            if not root.exists():
+                continue
+            for file_path in sorted(root.rglob("*")):
+                if file_path.is_file() and file_path.suffix.lower() in exts:
+                    try:
+                        rel = file_path.relative_to(Path("/app"))
+                        asset_path = str(rel)
+                    except ValueError:
+                        asset_path = str(file_path)
+                    result[key].append({"name": file_path.stem, "asset": asset_path})
+        return result
+
+    return await asyncio.to_thread(scan_assets)
 @app.get("/v1/inputs/{filename}/transcript")
 async def get_transcript(filename: str):
     """
@@ -392,11 +430,121 @@ class RenderProjectRequest(BaseModel):
     subtitle_style: str = "karaoke"
     subtitle_style_settings: Optional[dict] = None
     bgm_settings: Optional[dict] = None
-    overlays: list[Overlay]
-    clip_ranges: list[ClipRange]
+    overlays: list[Overlay] = Field(default_factory=list)
+    clip_ranges: list[ClipRange] = Field(default_factory=list)
     trim_silence: bool = True
     auto_zoom: bool = True
     smart_crop: bool = True
+
+
+class AutoEditRequest(BaseModel):
+    input_video: str
+    output_name: Optional[str] = None
+    mode: str = "short"
+    language: Optional[str] = "th"
+    source_type: str = "input"
+    clip_count: int = 3
+
+
+def _overlay_models(values: list[dict] | list[Overlay] | None) -> list[Overlay]:
+    if not values:
+        return []
+    return [value if isinstance(value, Overlay) else Overlay(**value) for value in values]
+
+
+def _clip_range_models(values: list[dict] | list[ClipRange] | None) -> list[ClipRange]:
+    if not values:
+        return []
+    return [value if isinstance(value, ClipRange) else ClipRange(**value) for value in values]
+
+
+def _project_job_payload(
+    project: dict,
+    render_plan: Optional[dict],
+    req: Optional[RenderProjectRequest] = None,
+    output_name: Optional[str] = None,
+) -> dict:
+    """Build a render job payload from request fields and AI render plan."""
+    payload = {
+        "mode": req.mode if req else (render_plan.get("mode") if render_plan else "short"),
+        "subtitle_style": req.subtitle_style if req else None,
+        "subtitle_style_settings": req.subtitle_style_settings if req else None,
+        "bgm_settings": req.bgm_settings if req else None,
+        "overlays": [o.model_dump() for o in _overlay_models(req.overlays)] if req else [],
+        "clip_ranges": [c.model_dump() for c in _clip_range_models(req.clip_ranges)] if req else [],
+        "trim_silence": req.trim_silence if req else None,
+        "auto_zoom": req.auto_zoom if req else None,
+        "smart_crop": req.smart_crop if req else None,
+    }
+
+    if render_plan:
+        if not payload["subtitle_style"]:
+            payload["subtitle_style"] = render_plan.get("subtitle_style", "karaoke")
+        if not payload["subtitle_style_settings"]:
+            payload["subtitle_style_settings"] = render_plan.get("subtitle_style_settings")
+        if not payload["bgm_settings"]:
+            payload["bgm_settings"] = render_plan.get("bgm_settings")
+        if not payload["overlays"]:
+            payload["overlays"] = render_plan.get("overlays", [])
+        if not payload["clip_ranges"]:
+            payload["clip_ranges"] = render_plan.get("clip_ranges", [])
+        if payload["trim_silence"] is None:
+            payload["trim_silence"] = render_plan.get("trim_silence", True)
+        if payload["auto_zoom"] is None:
+            payload["auto_zoom"] = render_plan.get("auto_zoom", True)
+
+    if not payload["subtitle_style"]:
+        payload["subtitle_style"] = "karaoke"
+    if payload["subtitle_style_settings"] is None:
+        payload["subtitle_style_settings"] = None
+    if payload["bgm_settings"] is None:
+        payload["bgm_settings"] = None
+    if payload["trim_silence"] is None:
+        payload["trim_silence"] = True
+    if payload["auto_zoom"] is None:
+        payload["auto_zoom"] = True
+    if payload["smart_crop"] is None:
+        payload["smart_crop"] = True
+    if output_name is None:
+        output_name = f"project_{project['project_id']}_{uuid.uuid4().hex[:8]}.mp4"
+
+    payload["output_name"] = output_name
+    payload["input_video"] = project["video_name"]
+    return payload
+
+
+async def _transcribe_and_plan(video_name: str, language: Optional[str], mode: str = "short") -> tuple[dict, dict, dict]:
+    """Transcribe a source video and build an AI render plan."""
+    path1 = INPUT_DIR / video_name
+    path2 = UPLOADS_DIR / video_name
+    video_path = str(path1) if path1.exists() else str(path2)
+
+    if not os.path.exists(video_path):
+        raise FileNotFoundError(f"Video file not found: {video_name}")
+
+    transcript = await asyncio.to_thread(transcriber.transcribe_video, video_path, language=language or "th")
+    fixed_transcript = await asyncio.to_thread(thai_fixer.fix_transcript, transcript)
+    orchestrated = await asyncio.to_thread(ai_corrector.orchestrate_transcript, fixed_transcript)
+    render_plan = orchestrated.get("render_plan") or {}
+
+    return fixed_transcript, orchestrated, render_plan
+
+
+async def _queue_render_job(project_id: str, input_path: str, payload: dict) -> tuple[str, str]:
+    """Create a render job and enqueue it."""
+    task_id = str(uuid.uuid4())
+    output_name = payload["output_name"]
+    output_path = str(OUTPUT_DIR / output_name)
+
+    await db.create_job(
+        task_id=task_id,
+        input_path=input_path,
+        output_path=output_path,
+        params=payload,
+    )
+    await worker.enqueue_job(task_id)
+    logger.info("Queued render job %s for project %s", task_id, project_id)
+    return task_id, output_path
 
 
 @app.post("/v1/upload")
@@ -517,34 +665,25 @@ async def transcribe_project_route(project_id: str):
 async def _run_project_transcription(project_id: str, video_name: str):
     """Run full transcription & AI fixer in background."""
     try:
-        path1 = INPUT_DIR / video_name
-        path2 = UPLOADS_DIR / video_name
-        video_path = str(path1) if path1.exists() else str(path2)
-        
-        if not os.path.exists(video_path):
-            raise FileNotFoundError(f"Video file not found: {video_name}")
-            
-        # 1. Transcribe
-        transcript = await asyncio.to_thread(transcriber.transcribe_video, video_path, language="th")
-        
-        # 2. Thai Fixer
-        transcript = await asyncio.to_thread(thai_fixer.fix_transcript, transcript)
-        
-        # 3. AI Corrector
-        transcript = await asyncio.to_thread(ai_corrector.correct_transcript, transcript)
-        
-        # Build initial plain text (one segment per line)
-        lines = [seg.get("text", "") for seg in transcript.get("segments", [])]
+        raw_transcript, orchestrated, render_plan = await _transcribe_and_plan(video_name, "th", mode="short")
+        aligned_transcript = orchestrated["aligned_transcript"]
+        overlays = render_plan.get("overlays", orchestrated.get("overlays", []))
+
+        lines = [seg.get("text", "") for seg in aligned_transcript.get("segments", [])]
         corrected_text = "\n".join(lines)
-        
+
         await db.update_project(
             project_id,
-            status="transcribed",
-            raw_transcript=transcript,
+            status="ready",
+            raw_transcript=raw_transcript,
             corrected_text=corrected_text,
-            aligned_transcript=transcript
+            aligned_transcript=aligned_transcript,
+            overlays=overlays,
+            render_plan=render_plan,
+            subtitle_style=render_plan.get("subtitle_style_settings"),
+            bgm_settings=render_plan.get("bgm_settings"),
         )
-        logger.info(f"Project {project_id} transcription and initial correction complete.")
+        logger.info("Project %s transcription and orchestration complete.", project_id)
     except Exception as e:
         logger.error(f"Project {project_id} transcription failed: {e}", exc_info=True)
         await db.update_project(project_id, status="failed")
@@ -597,6 +736,41 @@ async def suggest_overlays_route(project_id: str):
     return {"overlays": overlays}
 
 
+@app.post("/v1/projects/{project_id}/orchestrate")
+async def orchestrate_project_route(project_id: str):
+    """Trigger unified orchestration pipeline returning spelling corrected subtitles and visual/SFX edit plan."""
+    proj = await db.get_project(project_id)
+    if not proj:
+        raise HTTPException(404, f"Project not found: {project_id}")
+        
+    # Get raw or aligned transcript to feed the orchestrator
+    aligned_transcript = proj.get("raw_transcript") or proj.get("aligned_transcript")
+    if not aligned_transcript:
+        raise HTTPException(400, "Project does not have transcript ready.")
+        
+    orchestrated = await asyncio.to_thread(ai_corrector.orchestrate_transcript, aligned_transcript)
+    render_plan = orchestrated.get("render_plan") or {}
+    
+    # Save the updated transcript and overlays to db
+    await db.update_project(
+        project_id,
+        aligned_transcript=orchestrated["aligned_transcript"],
+        overlays=orchestrated["overlays"],
+        render_plan=render_plan,
+        subtitle_style=render_plan.get("subtitle_style_settings"),
+        bgm_settings=render_plan.get("bgm_settings"),
+        corrected_text="\n".join([seg.get("text", "") for seg in orchestrated["aligned_transcript"].get("segments", [])]),
+        status="ready"
+    )
+    
+    return {
+        "corrected_subtitles": orchestrated["corrected_subtitles"],
+        "edit_plan": orchestrated["edit_plan"],
+        "render_plan": render_plan,
+    }
+
+
+
 @app.get("/v1/projects/{project_id}/sfx")
 async def list_sfx_route(project_id: str):
     """List available sound effects."""
@@ -604,20 +778,25 @@ async def list_sfx_route(project_id: str):
         sfx_dir = Path("/app/assets/sfx")
         sfx_files = []
         if sfx_dir.exists():
-            for f in sfx_dir.iterdir():
+            for f in sfx_dir.rglob("*"):
                 if f.is_file() and f.suffix.lower() in (".wav", ".mp3"):
+                    try:
+                        rel = f.relative_to(Path("/app"))
+                        asset_path = str(rel)
+                    except ValueError:
+                        asset_path = f"assets/sfx/{f.name}"
                     sfx_files.append({
                         "name": f.stem,
-                        "asset": f"assets/sfx/{f.name}"
+                        "asset": asset_path
                     })
         return sfx_files
     sfx_files = await asyncio.to_thread(get_sfx)
     if not sfx_files:
         sfx_files = [
-            {"name": "ding", "asset": "assets/sfx/ding.wav"},
-            {"name": "whoosh", "asset": "assets/sfx/whoosh.wav"},
-            {"name": "pop", "asset": "assets/sfx/pop.wav"},
-            {"name": "boom", "asset": "assets/sfx/boom.wav"}
+            {"name": "ding", "asset": "assets/sfx/Whoosh (Soft/ding.mp3"},
+            {"name": "whoosh", "asset": "assets/sfx/Whoosh (Soft/Whoosh.mp3"},
+            {"name": "pop", "asset": "assets/sfx/Whoosh (Soft/pop.mp3"},
+            {"name": "boom", "asset": "assets/sfx/Whoosh (Soft/cinematic_hit.mp3"}
         ]
     return {"sfx": sfx_files}
 
@@ -646,54 +825,119 @@ async def render_project_route(project_id: str, req: RenderProjectRequest):
     aligned_transcript = proj.get("aligned_transcript")
     if not aligned_transcript:
         raise HTTPException(400, "Project is not ready for rendering (missing subtitles).")
-        
+    render_plan = proj.get("render_plan") or {}
     video_name = proj["video_name"]
     path1 = INPUT_DIR / video_name
     path2 = UPLOADS_DIR / video_name
     video_path = str(path1) if path1.exists() else str(path2)
-    
-    task_id = str(uuid.uuid4())
-    output_name = f"project_{project_id}_{task_id[:8]}.mp4"
-    output_path = str(OUTPUT_DIR / output_name)
-    
-    # Save the settings to DB first
+    output_name = f"project_{project_id}_{uuid.uuid4().hex[:8]}.mp4"
+
+    payload = _project_job_payload(proj, render_plan, req=req, output_name=output_name)
+    payload["transcript_override"] = aligned_transcript
+    payload["is_uploaded_video"] = path2.exists()
+
     await db.update_project(
         project_id,
-        subtitle_style=req.subtitle_style_settings,
-        bgm_settings=req.bgm_settings
+        subtitle_style=payload.get("subtitle_style_settings"),
+        bgm_settings=payload.get("bgm_settings"),
+        overlays=payload.get("overlays"),
+        render_plan=render_plan or None,
     )
-    
-    params = {
-        "input_video": os.path.basename(video_path),
-        "output_name": output_name,
-        "mode": req.mode,
-        "clip_ranges": [cr.model_dump() for cr in req.clip_ranges],
-        "subtitle_style": req.subtitle_style,
-        "subtitle_style_settings": req.subtitle_style_settings,
-        "bgm_settings": req.bgm_settings,
-        "overlays": [o.model_dump() for o in req.overlays],
-        "trim_silence": req.trim_silence,
-        "auto_zoom": req.auto_zoom,
-        "smart_crop": req.smart_crop,
-        "transcript_override": aligned_transcript,
-        "is_uploaded_video": path2.exists()
-    }
-    
-    await db.create_job(
-        task_id=task_id,
-        input_path=video_path,
-        output_path=output_path,
-        params=params
-    )
-    
-    await worker.enqueue_job(task_id)
+
+    task_id, _ = await _queue_render_job(project_id, video_path, payload | {"input_video": os.path.basename(video_path)})
     return {"task_id": task_id, "status": "queued", "output_name": output_name}
 
 
+@app.post("/v1/auto-edit")
+async def auto_edit_route(req: AutoEditRequest):
+    """One-shot input -> subtitle draft -> AI edit plan.
+
+    Rendering is intentionally left for the human-in-loop review step.
+    """
+    if req.source_type not in ("input", "upload"):
+        raise HTTPException(400, f"Invalid source_type: {req.source_type}")
+
+    source_root = INPUT_DIR if req.source_type == "input" else UPLOADS_DIR
+    input_path = source_root / req.input_video
+    if not input_path.exists():
+        raise HTTPException(404, f"Input file not found: {req.input_video}")
+
+    project_id = str(uuid.uuid4())
+    await db.create_project(project_id, req.input_video)
+    await db.update_project(project_id, status="transcribing")
+
+    raw_transcript, orchestrated, render_plan = await _transcribe_and_plan(req.input_video, req.language, mode=req.mode)
+    aligned_transcript = orchestrated["aligned_transcript"]
+    overlays = render_plan.get("overlays", orchestrated.get("overlays", []))
+    corrected_text = "\n".join(seg.get("text", "") for seg in aligned_transcript.get("segments", []))
+
+    await db.update_project(
+        project_id,
+        status="ready",
+        raw_transcript=raw_transcript,
+        corrected_text=corrected_text,
+        aligned_transcript=aligned_transcript,
+        overlays=overlays,
+        render_plan=render_plan,
+        subtitle_style=render_plan.get("subtitle_style_settings"),
+        bgm_settings=render_plan.get("bgm_settings"),
+    )
+    return {
+        "project_id": project_id,
+        "status": "ready",
+        "needs_human_review": True,
+        "render_plan": render_plan,
+        "project": await db.get_project(project_id),
+    }
+
+
+@app.get("/v1/download-asset")
+async def download_asset(url: str = ""):
+    """
+    Download a remote asset (e.g. from Pixabay) to the local public/assets/visuals/ folder.
+    Returns the local path so the frontend can use it.
+    """
+    if not url or not (url.startswith("http://") or url.startswith("https://")):
+        raise HTTPException(400, "Invalid or missing URL parameter")
+    
+    import hashlib
+    import urllib.request
+    
+    visuals_dir = PROJECT_DIR / "public" / "assets" / "visuals"
+    visuals_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Determine extension
+    ext = ".jpg"
+    if ".png" in url.lower(): ext = ".png"
+    elif ".mp4" in url.lower(): ext = ".mp4"
+    elif ".gif" in url.lower(): ext = ".gif"
+    elif ".webp" in url.lower(): ext = ".webp"
+    elif ".jpeg" in url.lower(): ext = ".jpeg"
+    
+    h = hashlib.md5(url.encode()).hexdigest()[:12]
+    local_filename = f"pixabay_{h}{ext}"
+    local_path = visuals_dir / local_filename
+    
+    if not local_path.exists():
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+            )
+            with urllib.request.urlopen(req, timeout=30) as response:
+                with open(local_path, "wb") as f:
+                    f.write(response.read())
+            logger.info(f"Downloaded remote asset {url} → {local_path}")
+        except Exception as e:
+            raise HTTPException(500, f"Failed to download asset: {str(e)[:500]}")
+    
+    return {"local_path": f"assets/visuals/{local_filename}", "filename": local_filename}
+
+
 # ─── Expose folders for browser streaming & playing ───
-app.mount("/output", StaticFiles(directory="/app/output"), name="output")
-app.mount("/input", StaticFiles(directory="/app/input"), name="input")
-app.mount("/uploads", StaticFiles(directory="/app/data/uploads"), name="uploads")
+app.mount("/output", StaticFiles(directory=str(OUTPUT_DIR)), name="output")
+app.mount("/input", StaticFiles(directory=str(INPUT_DIR)), name="input")
+app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 # ─── Serve public directory last ───
-app.mount("/", StaticFiles(directory="/app/public", html=True), name="public")
+app.mount("/", StaticFiles(directory=str(PUBLIC_DIR), html=True), name="public")

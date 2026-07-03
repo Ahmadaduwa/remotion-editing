@@ -3,469 +3,532 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Remotion Video subtitle & SFX Editor</title>
+    <title>ReEdit — Thai AI Video Editor</title>
+    <meta name="description" content="Professional AI-powered video editor with Thai subtitle support, karaoke highlights, and smart SFX placement.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Outfit:wght@300;400;500;600;700;900&family=Noto+Sans+Thai:wght@300;400;500;600;700;900&family=Kanit:wght@300;400;600;800&family=Prompt:wght@300;400;600;800&family=Sarabun:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app-container">
-        <!-- Header -->
-        <header class="app-header">
-            <div class="logo-area">
-                <span class="logo-icon">🎬</span>
-                <h1>Remotion Pipeline <span>Thai Fixed + AI SFX</span></h1>
-            </div>
-            <div class="project-selector-area">
-                <label>Project:</label>
-                <select id="project-select" style="display:none;"></select>
-                <span id="header-project-label" class="header-project-label">-- No Project --</span>
-                <button class="btn btn-outline btn-small" onclick="goToStep(1)">Change</button>
-            </div>
-        </header>
+<div class="app-container" id="app-root">
 
-        <!-- Stepper Navigation -->
-        <div class="stepper-container">
-            <div class="step active" data-step="1">
-                <div class="step-num">1</div>
-                <div class="step-title">Source Video</div>
-            </div>
-            <div class="step-line"></div>
-            <div class="step" data-step="2">
-                <div class="step-num">2</div>
-                <div class="step-title">AI Transcription</div>
-            </div>
-            <div class="step-line"></div>
-            <div class="step" data-step="3">
-                <div class="step-num">3</div>
-                <div class="step-title">Human-in-the-Loop</div>
-            </div>
-            <div class="step-line"></div>
-            <div class="step" data-step="4">
-                <div class="step-num">4</div>
-                <div class="step-title">SFX & Overlays</div>
-            </div>
-            <div class="step-line"></div>
-            <div class="step" data-step="5">
-                <div class="step-num">5</div>
-                <div class="step-title">Cut & Render</div>
-            </div>
+    <!-- HEADER -->
+    <header class="app-header">
+        <div class="logo-area">
+            <span class="logo-icon">🎬</span>
+            <h1>ReEdit <span>AI Pipeline</span></h1>
         </div>
+        <div class="project-selector-area" id="header-project-area" style="display:none">
+            <span class="header-project-badge" id="header-project-label">— No Project —</span>
+            <button class="btn btn-outline btn-small" onclick="goToStep(1)">↩ Change</button>
+        </div>
+    </header>
 
-        <!-- Main Workspace -->
-        <main class="workspace-area">
-            
-            <!-- STEP 1: SELECT VIDEO -->
-            <section id="step-pane-1" class="step-pane active">
-                <div class="card pane-card">
-                    <h2>Choose or Upload Video</h2>
-                    <p class="subtitle">Select a video from the server directory or upload a new MP4/MOV file.</p>
-                    
-                    <div class="upload-split">
-                        <div class="upload-zone" id="drop-zone">
-                            <span class="upload-icon">📤</span>
-                            <h3>Drag & Drop Video here</h3>
-                            <p>or click to browse files (MP4, MOV, MKV)</p>
-                            <input type="file" id="file-input" accept="video/*" style="display: none;">
-                            <div class="progress-bar-container" id="upload-progress-container" style="display: none;">
-                                <div class="progress-bar" id="upload-progress-bar"></div>
-                                <span class="progress-label" id="upload-progress-label">Uploading 0%</span>
-                            </div>
-                        </div>
+    <!-- STEPPER (3 steps) -->
+    <div class="stepper-container" id="stepper-container">
+        <div class="step active" data-step="1">
+            <div class="step-num">1</div>
+            <div class="step-title">Source Video</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" data-step="2">
+            <div class="step-num">2</div>
+            <div class="step-title">AI Transcription</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" data-step="3">
+            <div class="step-num">3</div>
+            <div class="step-title">Edit &amp; Export</div>
+        </div>
+    </div>
 
-                        <div class="server-videos-zone">
-                            <h3>Existing Videos on Server</h3>
-                            <div class="video-grid" id="server-videos-list">
-                                <div class="loading-spinner"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
+    <!-- WORKSPACE -->
+    <main class="workspace-area" id="workspace-area">
 
-            <!-- STEP 1: PROJECTS PANEL (shown alongside step-pane-1) -->
-            <div id="projects-panel" style="display:none;">
-                <div class="card pane-card" style="margin-top: 20px;">
-                    <div class="card-header-actions">
-                        <h2>Saved Projects</h2>
-                        <span class="subtitle" style="font-size:13px; color: var(--text-secondary);">Select a project to continue editing, or start fresh above.</span>
-                    </div>
-                    <div id="projects-list-grid" class="projects-list-grid">
-                        <div class="loading-spinner"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- STEP 2: TRANSCRIPTION -->
-
-            <section id="step-pane-2" class="step-pane">
-                <div class="card pane-card text-center">
-                    <h2>AI Transcription & Auto-Fixes</h2>
-                    <p class="subtitle">We will run Whisper (Word-Level timestamps) ➔ Thai segmentation fixer (PyThaiNLP) ➔ AI spelling corrections.</p>
-                    
-                    <div class="pipeline-loader-box">
-                        <div class="pulse-ring"></div>
-                        <div class="pipeline-stages">
-                            <div class="stage-item" id="stage-whisper"><span class="status-bullet"></span> Whisper Transcription</div>
-                            <div class="stage-item" id="stage-thai-fix"><span class="status-bullet"></span> Thai word segment re-joining</div>
-                            <div class="stage-item" id="stage-ai-correct"><span class="status-bullet"></span> LLM Spelling Corrector</div>
+        <!-- STEP 1: SELECT VIDEO -->
+        <section id="step-pane-1" class="step-pane active">
+            <div class="card pane-card">
+                <h2>Choose or Upload Video</h2>
+                <p class="subtitle">Select a video from the server directory or upload a new MP4/MOV file.</p>
+                <div class="upload-split">
+                    <div class="upload-zone" id="drop-zone">
+                        <span class="upload-icon">📤</span>
+                        <h3>Drag &amp; Drop Video here</h3>
+                        <p>or click to browse files (MP4, MOV, MKV)</p>
+                        <input type="file" id="file-input" accept="video/*" style="display: none;">
+                        <div class="progress-bar-container" id="upload-progress-container" style="display: none;">
+                            <div class="progress-bar" id="upload-progress-bar"></div>
+                            <span class="progress-label" id="upload-progress-label">Uploading 0%</span>
                         </div>
                     </div>
-
-                    <button class="btn btn-primary btn-large" id="start-transcription-btn">Start AI Processing Pipeline</button>
-                    <div class="loading-status-text" id="transcription-status-text"></div>
-                </div>
-            </section>
-
-            <!-- STEP 3: HUMAN LOOP SUBTITLE EDITOR -->
-            <section id="step-pane-3" class="step-pane">
-                <div class="split-layout">
-                    <!-- Left: Subtitle Editor -->
-                    <div class="card pane-card flex-2">
-                        <div class="card-header-actions">
-                            <h2>Human Subtitle Loop</h2>
-                            <button class="btn btn-success" id="apply-subtitle-edits-btn">Apply Subtitle Edits</button>
-                        </div>
-                        <p class="subtitle">Review and correct the Thai sentences. Timestamps will automatically re-align.</p>
-                        
-                        <div class="subtitle-editor-list" id="subtitle-sentences-list">
-                            <!-- Rendered dynamically -->
-                        </div>
-                    </div>
-
-                    <!-- Right: HTML5 Live Preview & Metadata -->
-                    <div class="card pane-card flex-1">
-                        <h3>HTML5 Live Preview</h3>
-                        <div class="preview-player-wrapper">
-                            <video id="preview-video" controls playsinline></video>
-                            <div id="preview-subtitle-overlay" class="preview-subtitle-overlay-box"></div>
-                        </div>
-                        <br>
-                        <h3>Project Details</h3>
-                        <div class="metadata-list" id="project-meta">
-                            <div class="meta-item"><strong>Video:</strong> <span id="meta-video-name">Loading...</span></div>
-                            <div class="meta-item"><strong>Duration:</strong> <span id="meta-video-duration">Loading...</span></div>
-                            <div class="meta-item"><strong>Segments:</strong> <span id="meta-segment-count">0</span></div>
-                        </div>
-                        <div class="alert alert-info">
-                            💡 Edit spelling or drag blocks below. The system aligns word timestamps within your adjusted segment boundaries.
+                    <div class="server-videos-zone">
+                        <h3>Existing Videos on Server</h3>
+                        <div class="video-grid" id="server-videos-list">
+                            <div class="loading-spinner"></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Subtitle Visual Timeline Editor (Feature 5) -->
-                <div class="card pane-card timeline-card" style="margin-top: 25px;">
-                    <h3>Visual Subtitle Timeline Adjuster</h3>
-                    <p class="subtitle">Drag the left/right boundaries of each block to adjust segment timings visually.</p>
-                    <div class="timeline-container-outer">
-                        <div class="timeline-ruler" id="timeline-ruler"></div>
-                        <div class="timeline-scroll-container" id="timeline-scroll-container">
-                            <div class="timeline-tracks-area" id="timeline-tracks-area"></div>
+                <div class="quick-auto-edit-card">
+                    <div class="card-header-actions" style="margin-bottom:12px;">
+                        <div>
+                            <h3 style="margin-bottom:4px;">One-click Auto Edit</h3>
+                            <p class="subtitle" style="margin-bottom:0;">Transcribe the selected video, let Ollama choose the cut plan, overlays, BGM, and SFX, then queue the final render.</p>
                         </div>
                     </div>
-                </div>
-            </section>
 
-            <!-- STEP 4: SFX & OVERLAYS TIMELINE -->
-            <section id="step-pane-4" class="step-pane">
-                <div class="split-layout">
-                    <!-- Left: Overlays Table & Form -->
-                    <div class="card pane-card flex-2">
-                        <div class="card-header-actions">
-                            <h2>Suggested Text & SFX Overlays</h2>
-                            <div class="btn-group">
-                                <button class="btn btn-secondary" id="suggest-overlays-btn">Suggest Overlays (AI)</button>
-                                <button class="btn btn-outline" id="download-overlays-btn">Download JSON Overlays</button>
-                            </div>
-                        </div>
-                        <p class="subtitle">AI suggestions for pop-up words (text) and sound effects (SFX) to add excitement.</p>
-                        
-                        <!-- Visual Overlays Timeline -->
-                        <div class="timeline-container-outer" style="margin-bottom: 20px;">
-                            <div class="timeline-ruler" id="overlay-timeline-ruler"></div>
-                            <div class="timeline-scroll-container">
-                                <div class="timeline-tracks-area" id="overlay-timeline-tracks-area" style="position: relative; height: 90px; min-height: 90px; background: rgba(0,0,0,0.2); border-radius: 6px; overflow: hidden;"></div>
-                            </div>
-                        </div>
-                        
-                        <div class="overlay-timeline-table-container">
-                            <table class="overlay-table">
-                                <thead>
-                                    <tr>
-                                        <th>Type</th>
-                                        <th>Time (s)</th>
-                                        <th>Asset / Content</th>
-                                        <th>Style / Pos</th>
-                                        <th>Volume / End</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="overlays-list-tbody">
-                                    <!-- Dynamic rows -->
-                                </tbody>
-                            </table>
-                        </div>
-                        <button class="btn btn-secondary" style="margin-top: 15px;" id="add-overlay-btn">+ Add Overlay Manually</button>
-                    </div>
-
-                    <!-- Right: Add/Edit Overlay Form -->
-                    <div class="card pane-card flex-1" id="overlay-edit-card">
-                        <h3>Live Preview</h3>
-                        <div class="preview-player-wrapper" style="margin-bottom: 20px;">
-                            <video id="preview-video-step4" controls playsinline></video>
-                            <div id="preview-subtitle-overlay-step4" class="preview-subtitle-overlay-box"></div>
-                        </div>
-                        <h3>Overlay Editor</h3>
-                        <form id="overlay-form">
-                            <div class="form-group">
-                                <label for="form-overlay-type">Type</label>
-                                <select id="form-overlay-type">
-                                    <option value="text">Text Pop-up</option>
-                                    <option value="audio">SFX Sound Effect</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="form-overlay-start">Start Time (seconds)</label>
-                                <input type="number" id="form-overlay-start" step="0.1" min="0" value="0">
-                            </div>
-
-                            <div class="form-group" id="form-group-end">
-                                <label for="form-overlay-end">End Time (seconds, -1 for full)</label>
-                                <input type="number" id="form-overlay-end" step="0.1" min="-1" value="-1">
-                            </div>
-
-                            <div class="form-group" id="form-group-content">
-                                <label for="form-overlay-content">Text Content</label>
-                                <input type="text" id="form-overlay-content" placeholder="e.g. WOW!">
-                            </div>
-
-                            <div class="form-group" id="form-group-asset">
-                                <label for="form-overlay-asset">Sound Effect Asset</label>
-                                <select id="form-overlay-asset">
-                                    <!-- SFX select items -->
-                                </select>
-                            </div>
-
-                            <div class="form-group" id="form-group-style">
-                                <label for="form-overlay-style">Text Style</label>
-                                <select id="form-overlay-style">
-                                    <option value="default">Default Fade</option>
-                                    <option value="hook">Hook (Scale/Spring)</option>
-                                    <option value="cta">CTA (Pulse)</option>
-                                </select>
-                            </div>
-
-                            <div class="form-group" id="form-group-position">
-                                <label for="form-overlay-position">Text Position</label>
-                                <select id="form-overlay-position">
-                                    <option value="center">Center</option>
-                                    <option value="top">Top</option>
-                                    <option value="bottom">Bottom</option>
-                                    <option value="bottom-right">Bottom Right</option>
-                                </select>
-                            </div>
-
-                            <div class="form-group" id="form-group-volume">
-                                <label for="form-overlay-volume">Audio Volume</label>
-                                <input type="range" id="form-overlay-volume" min="0" max="1" step="0.1" value="1.0">
-                            </div>
-
-                            <button type="submit" class="btn btn-primary w-full" id="save-overlay-btn">Add Overlay</button>
-                        </form>
-                    </div>
-                </div>
-            </section>
-
-            <!-- STEP 5: RENDER VIDEO -->
-            <section id="step-pane-5" class="step-pane">
-                <div class="split-layout">
-                    <!-- Left: Render controls -->
-                    <div class="card pane-card flex-1">
-                        <h2>Cut & Render Settings</h2>
-                        <p class="subtitle">Stitch your video, choose formatting, and start output compilation.</p>
-                        
+                    <div class="auto-edit-grid">
                         <div class="form-group">
-                            <label>Video Mode (Aspect Ratio)</label>
-                            <div class="radio-card-group">
-                                <label class="radio-card">
-                                    <input type="radio" name="render-mode" value="short" checked>
-                                    <div class="card-inner">
-                                        <span class="icon">📱</span>
-                                        <strong>Short (9:16)</strong>
-                                        <span>Vertical format (TikTok/Reels)</span>
-                                    </div>
-                                </label>
-                                <label class="radio-card">
-                                    <input type="radio" name="render-mode" value="long">
-                                    <div class="card-inner">
-                                        <span class="icon">💻</span>
-                                        <strong>Long (16:9)</strong>
-                                        <span>Horizontal widescreen (YouTube)</span>
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="render-subtitle-style">Karaoke Subtitle Style</label>
-                            <select id="render-subtitle-style">
-                                <option value="karaoke">Karaoke Highlight</option>
-                                <option value="static">Static Sentence blocks</option>
-                                <option value="none">No Subtitles</option>
+                            <label>Mode</label>
+                            <select id="auto-edit-mode">
+                                <option value="short" selected>Short (9:16)</option>
+                                <option value="long">Long (16:9)</option>
                             </select>
                         </div>
-
-                        <div class="checkbox-group">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="render-trim-silence" checked>
-                                <span>Trim Silence (skip gaps > 0.4s & fillers)</span>
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="render-auto-zoom" checked>
-                                <span>Apply Auto Ken-Burns camera zoom</span>
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="render-smart-crop" checked>
-                                <span>Enable Smart Face-Tracking (Portrait Mode)</span>
-                            </label>
+                        <div class="form-group">
+                            <label>Clip Count</label>
+                            <input type="number" id="auto-edit-clip-count" min="1" max="8" value="3">
                         </div>
-
-                        <!-- Subtitle Styling Customizer (Feature 3) -->
-                        <div class="form-group" style="margin-top: 25px; border-top: 1px solid var(--border-color); padding-top: 20px;">
-                            <label>Subtitle Styling Customizer</label>
-                            <p class="subtitle" style="margin-bottom: 15px;">Configure font style, highlights, and animations for subtitles.</p>
-                            <div class="styling-panel-grid">
-                                <div class="form-group-sub">
-                                    <label for="style-font-family">Font Family</label>
-                                    <select id="style-font-family">
-                                        <option value="Noto Sans Thai">Noto Sans Thai</option>
-                                        <option value="Kanit">Kanit</option>
-                                        <option value="Prompt">Prompt</option>
-                                        <option value="Sarabun">Sarabun</option>
-                                        <option value="Inter">Inter</option>
-                                        <option value="Outfit">Outfit</option>
-                                    </select>
-                                </div>
-                                <div class="form-group-sub">
-                                    <label for="style-font-size">Font Size (px)</label>
-                                    <input type="number" id="style-font-size" min="12" max="100" value="44">
-                                </div>
-                                <div class="form-group-sub">
-                                    <label for="style-text-color">Text Color</label>
-                                    <input type="color" id="style-text-color" value="#ffffff">
-                                </div>
-                                <div class="form-group-sub">
-                                    <label for="style-highlight-color">Active Word Color</label>
-                                    <input type="color" id="style-highlight-color" value="#FFD700">
-                                </div>
-                                <div class="form-group-sub">
-                                    <label for="style-bg-type">Background Style</label>
-                                    <select id="style-bg-type">
-                                        <option value="card">Translucent Card</option>
-                                        <option value="outline">Dark Stroke Outline</option>
-                                        <option value="none">No Background</option>
-                                    </select>
-                                </div>
-                                <div class="form-group-sub">
-                                    <label for="style-bg-color">Card Color</label>
-                                    <input type="color" id="style-bg-color" value="#000000">
-                                </div>
-                                <div class="form-group-sub">
-                                    <label for="style-animation">Highlight Animation</label>
-                                    <select id="style-animation">
-                                        <option value="pop">Spring Scale Pop</option>
-                                        <option value="bounce">Bounce Up</option>
-                                        <option value="glow">Active Word Glow</option>
-                                        <option value="none">Static Highlight</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Background Music Panel (Feature 4) -->
-                        <div class="form-group" style="margin-top: 25px; border-top: 1px solid var(--border-color); padding-top: 20px;">
-                            <label>Background Music (BGM)</label>
-                            <p class="subtitle" style="margin-bottom: 15px;">Overlay stock instrumental music into the video composition.</p>
-                            <div class="bgm-panel-grid">
-                                <div class="form-group-sub">
-                                    <label for="bgm-track">Music Track</label>
-                                    <select id="bgm-track">
-                                        <option value="">-- No Background Music --</option>
-                                        <option value="assets/bgm/chill_lofi.wav">Chill Lofi Drum & Keys Loop</option>
-                                        <option value="assets/bgm/ambient_pad.wav">Ambient Pad Progression</option>
-                                    </select>
-                                </div>
-                                <div class="form-group-sub">
-                                    <label for="bgm-volume">BGM Volume</label>
-                                    <input type="range" id="bgm-volume" min="0" max="1" step="0.05" value="0.15">
-                                    <span id="bgm-volume-value" style="font-size:12px; color:var(--text-secondary); margin-left: 8px;">15%</span>
-                                </div>
-                                <div class="checkbox-group" style="margin-top: 15px;">
-                                    <label class="checkbox-label">
-                                        <input type="checkbox" id="bgm-enable-ducking" checked>
-                                        <span>Auto-Duck music volume during speech (smooth fade BGM out 85%)</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Clip Selection (Cut/Combine) -->
-                        <div class="form-group" style="margin-top: 20px;">
-                            <label>Video Range Cuts (Stitch ranges together)</label>
-                            <div class="range-list" id="range-cuts-list">
-                                <!-- Dynamic ranges -->
-                            </div>
-                            <button class="btn btn-secondary btn-small" id="add-range-cut-btn" style="margin-top: 10px;">+ Add Range Segment</button>
-                        </div>
-
-                        <button class="btn btn-primary btn-large w-full" style="margin-top: 25px;" id="trigger-render-btn">Render Final Video</button>
                     </div>
 
-                    <!-- Right: Rendering status -->
-                    <div class="card pane-card flex-1" id="render-status-card">
-                        <h2>Rendering Pipeline Status</h2>
-                        <p class="subtitle">Remotion builds the video frame-by-frame using headless browser rendering.</p>
-                        
-                        <div class="render-progress-box" id="render-progress-section" style="display:none;">
-                            <div class="circular-progress">
-                                <svg class="progress-ring" width="120" height="120">
-                                    <circle class="progress-ring__circle-bg" stroke="#1f2937" stroke-width="8" fill="transparent" r="50" cx="60" cy="60"/>
-                                    <circle class="progress-ring__circle" id="render-circle-progress" stroke="#8b5cf6" stroke-width="8" fill="transparent" r="50" cx="60" cy="60"/>
-                                </svg>
-                                <div class="progress-value" id="render-progress-percent">0%</div>
-                            </div>
-                            <h3 id="render-status-label">Queued...</h3>
-                            <p id="render-status-details">Waiting for rendering slot</p>
-                        </div>
+                    <div class="auto-edit-status" id="auto-edit-summary">
+                        Select or upload a video first.
+                    </div>
 
-                        <div class="rendered-output-box" id="rendered-output-section" style="display:none;">
-                            <span class="check-icon">✅</span>
-                            <h3>Video Rendered Successfully!</h3>
-                            <video id="final-video-player" controls width="100%" class="rendered-video-preview"></video>
-                            <a id="final-video-download" class="btn btn-success btn-large w-full text-center" style="display:block; text-decoration:none; margin-top:15px;" download>Download Video</a>
-                        </div>
+                    <button class="btn btn-primary btn-large w-full" id="auto-edit-btn" disabled>
+                        ⚡ Auto Edit Selected Video
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <div id="projects-panel" style="display:none;">
+            <div class="card pane-card" style="margin-top: 20px;">
+                <div class="card-header-actions">
+                    <h2>Saved Projects</h2>
+                    <span class="subtitle" style="font-size:13px;">Select a project to continue editing.</span>
+                </div>
+                <div id="projects-list-grid" class="projects-list-grid">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 2: TRANSCRIPTION -->
+        <section id="step-pane-2" class="step-pane">
+            <div class="card pane-card text-center">
+                <h2>AI Transcription &amp; Auto-Fixes</h2>
+                <p class="subtitle">Whisper (Word-Level timestamps) ➔ Thai Segmentation Fixer (PyThaiNLP) ➔ LLM Spelling Corrector</p>
+                <div class="pipeline-loader-box">
+                    <div class="pulse-ring"></div>
+                    <div class="pipeline-stages">
+                        <div class="stage-item" id="stage-whisper"><span class="status-bullet"></span> Whisper Transcription</div>
+                        <div class="stage-item" id="stage-thai-fix"><span class="status-bullet"></span> Thai word segment re-joining</div>
+                        <div class="stage-item" id="stage-ai-correct"><span class="status-bullet"></span> LLM Spelling Corrector</div>
                     </div>
                 </div>
-            </section>
+                <button class="btn btn-primary btn-large" id="start-transcription-btn">Start AI Processing Pipeline</button>
+                <div class="loading-status-text" id="transcription-status-text"></div>
+            </div>
+        </section>
 
-        </main>
-    </div>
+        <!-- STEP 3: NLE WORKSPACE -->
+        <section id="step-pane-3" class="step-pane nle-workspace">
 
-    <!-- Custom Confirm Modal -->
-    <div id="confirm-modal" class="confirm-modal-overlay" style="display:none;">
-        <div class="confirm-modal-box">
-            <div class="confirm-modal-icon">🗑️</div>
-            <h3 class="confirm-modal-title" id="confirm-modal-title">ยืนยันการลบ</h3>
-            <p class="confirm-modal-message" id="confirm-modal-message"></p>
-            <div class="confirm-modal-actions">
-                <button type="button" class="btn btn-outline" id="confirm-modal-cancel">ยกเลิก</button>
-                <button type="button" class="btn btn-danger" id="confirm-modal-ok">ลบ</button>
+            <!-- NLE TOOLBAR -->
+            <div class="nle-toolbar">
+                <div class="nle-toolbar-group">
+                    <button class="nle-tool active" id="tool-select" data-tool="select" title="Select (V)">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M4 0l16 12.28-7.37 1.65 4.37 9.07-2.88 1.35-4.28-9.05-5.84 4.65z"/></svg>
+                    </button>
+                    <button class="nle-tool" id="tool-razor" data-tool="razor" title="Razor (C)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M6 20L20 4M9 20l11-7M4 14l11-7"/></svg>
+                    </button>
+                </div>
+
+                <div class="nle-toolbar-group nle-transport">
+                    <button class="nle-transport-btn" id="nle-goto-start" title="Go to Start">⏮</button>
+                    <button class="nle-transport-btn nle-play-btn" id="nle-play-pause" title="Play/Pause (Space)">▶</button>
+                    <button class="nle-transport-btn" id="nle-goto-end" title="Go to End">⏭</button>
+                    <div class="nle-timecode" id="nle-timecode">00:00.000</div>
+                </div>
+
+                <div class="nle-toolbar-group nle-toolbar-right">
+                    <button class="btn btn-secondary btn-sm" id="suggest-overlays-btn">✨ AI Suggest SFX</button>
+                    <button class="btn btn-success btn-sm" id="apply-subtitle-edits-btn">✓ Save Edits</button>
+                    <button class="btn btn-primary btn-sm" id="open-render-drawer-btn">🎬 Export</button>
+                </div>
+            </div>
+
+            <!-- NLE MAIN: Inspector + Preview -->
+            <div class="nle-main">
+
+                <!-- Inspector Panel -->
+                <aside class="nle-inspector" id="nle-inspector">
+                    <div class="inspector-tabs">
+                        <button class="insp-tab active" data-tab="edit">Edit</button>
+                        <button class="insp-tab" data-tab="style">Style</button>
+                        <button class="insp-tab" data-tab="bgm">BGM</button>
+                    </div>
+
+                    <!-- Edit Tab -->
+                    <div class="insp-content active" id="insp-tab-edit">
+                        <div class="insp-empty" id="insp-empty-state">
+                            <div class="insp-empty-icon">🎯</div>
+                            <p>Click a block on the<br>timeline to edit it</p>
+                        </div>
+                        <div class="insp-block-form" id="insp-block-form" style="display:none;">
+                            <div class="insp-block-badge" id="insp-block-badge">SUBTITLE</div>
+                            <div class="insp-field">
+                                <label>Content</label>
+                                <textarea id="insp-text" rows="3" placeholder="Block text..."></textarea>
+                            </div>
+                            <div class="insp-timing-grid">
+                                <div class="insp-field">
+                                    <label>Start (s)</label>
+                                    <input type="number" id="insp-start" step="0.01" min="0">
+                                </div>
+                                <div class="insp-field">
+                                    <label>End (s)</label>
+                                    <input type="number" id="insp-end" step="0.01" min="0">
+                                </div>
+                            </div>
+                            <!-- Pixabay Visual Search Integration -->
+                            <div class="insp-field" id="insp-pixabay-section" style="display:none; border-top:1px solid var(--nle-border); padding-top:10px; margin-top:10px;">
+                                <label style="display:flex; justify-content:space-between; font-weight:700; font-size:10px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.6px;">
+                                    <span>🖼 Pixabay Search</span>
+                                    <span style="font-size:9px; text-transform:none; color:#a78bfa; cursor:pointer;" onclick="togglePixabayKeyInput()">API Key ⚙</span>
+                                </label>
+                                <div id="pixabay-key-wrapper" style="display:none; margin-bottom:8px; gap:4px; flex-direction:column;">
+                                    <input type="password" id="pixabay-api-key-input" placeholder="Enter Pixabay API Key" style="width:100%; font-size:11px; padding:4px 6px;">
+                                    <small style="font-size:9px; color:var(--text-muted)">Key is saved locally in your browser</small>
+                                </div>
+                                <div style="display:flex; gap:4px; margin-top:3px;">
+                                    <select id="pixabay-search-type" style="width:80px; padding:4px; font-size:11px; height:28px;">
+                                        <option value="photo">Photo</option>
+                                        <option value="video">Video</option>
+                                    </select>
+                                    <input type="text" id="pixabay-search-input" placeholder="Search cat, background, fire..." style="flex:1; padding:4px 6px; font-size:11px; height:28px;">
+                                    <button type="button" class="btn btn-secondary btn-sm" id="pixabay-search-btn" style="padding:0 8px; height:28px;">🔍</button>
+                                </div>
+                                <div id="pixabay-results-grid" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:4px; max-height:100px; overflow-y:auto; margin-top:6px; background:rgba(0,0,0,0.2); border-radius:4px; padding:4px;">
+                                    <span style="grid-column:span 3; font-size:10px; color:var(--text-muted); text-align:center; padding:10px 0;">Enter keyword and search</span>
+                                </div>
+                                <div id="pixabay-selected-preview" style="font-size:11px; color:var(--text-secondary); margin-top:6px; display:none; align-items:center; gap:6px;">
+                                    <span style="color:#10b981;">✓ Selected:</span>
+                                    <span id="pixabay-selected-filename" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:140px;"></span>
+                                </div>
+                            </div>
+
+                            <div class="insp-actions">
+                                <button class="btn btn-primary btn-sm w-full" id="insp-apply-btn">✓ Apply Changes</button>
+                                <button class="btn btn-danger btn-sm w-full" id="insp-delete-btn">🗑 Delete Block</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Style Tab -->
+                    <div class="insp-content" id="insp-tab-style">
+                        <div class="insp-field">
+                            <label>Font Family</label>
+                            <select id="style-font-family">
+                                <option value="Noto Sans Thai">Noto Sans Thai</option>
+                                <option value="Kanit">Kanit</option>
+                                <option value="Prompt">Prompt</option>
+                                <option value="Sarabun">Sarabun</option>
+                                <option value="Inter">Inter</option>
+                                <option value="Outfit">Outfit</option>
+                            </select>
+                        </div>
+                        <div class="insp-field">
+                            <label>Font Size (px)</label>
+                            <input type="number" id="style-font-size" min="12" max="100" value="44">
+                        </div>
+                        <div class="insp-color-grid">
+                            <div class="insp-field">
+                                <label>Text Color</label>
+                                <input type="color" id="style-text-color" value="#ffffff">
+                            </div>
+                            <div class="insp-field">
+                                <label>Highlight</label>
+                                <input type="color" id="style-highlight-color" value="#FFD700">
+                            </div>
+                        </div>
+                        <div class="insp-color-grid">
+                            <div class="insp-field">
+                                <label>BG Color</label>
+                                <input type="color" id="style-bg-color" value="#000000">
+                            </div>
+                            <div class="insp-field">
+                                <label>BG Style</label>
+                                <select id="style-bg-type">
+                                    <option value="card">Card</option>
+                                    <option value="outline">Stroke</option>
+                                    <option value="none">None</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="insp-field">
+                            <label>Word Animation</label>
+                            <select id="style-animation">
+                                <option value="pop">Spring Scale Pop</option>
+                                <option value="bounce">Bounce Up</option>
+                                <option value="glow">Word Glow</option>
+                                <option value="none">Static Highlight</option>
+                            </select>
+                        </div>
+                        <div class="insp-style-hint">Changes apply to Live Preview and final render</div>
+                    </div>
+
+                    <!-- BGM Tab -->
+                    <div class="insp-content" id="insp-tab-bgm">
+                        <div class="insp-field">
+                            <label>Music Track</label>
+                            <select id="bgm-track">
+                                <option value="">— No BGM —</option>
+                                <option value="assets/bgm/ambient song thing.mp3">Ambient Song</option>
+                                <option value="assets/bgm/room_tone.mp3">Room Tone</option>
+                            </select>
+                        </div>
+                        <div class="insp-field">
+                            <label>Volume — <span id="bgm-volume-display">15%</span></label>
+                            <input type="range" id="bgm-volume" min="0" max="1" step="0.05" value="0.15"
+                                oninput="document.getElementById('bgm-volume-display').textContent=Math.round(this.value*100)+'%';document.getElementById('bgm-volume-value').innerText=Math.round(this.value*100)+'%'">
+                        </div>
+                        <label class="toggle-row">
+                            <span class="toggle-switch-wrap">
+                                <input type="checkbox" id="bgm-enable-ducking" checked>
+                                <span class="toggle-switch"></span>
+                            </span>
+                            <span class="toggle-label-text">
+                                <strong>Auto-Duck during speech</strong>
+                                <small>BGM fades to 15% when voice detected</small>
+                            </span>
+                        </label>
+                        <span id="bgm-volume-value" style="display:none">15%</span>
+                    </div>
+                </aside>
+
+                <!-- Preview Player -->
+                <div class="nle-preview" id="nle-preview">
+                    <div class="preview-topbar">
+                        <span class="preview-panel-label">PREVIEW</span>
+                        <div class="preview-toggles">
+                            <label class="mini-check">
+                                <input type="checkbox" id="preview-sub-toggle" checked>
+                                <span>Subtitles</span>
+                            </label>
+                            <label class="mini-check">
+                                <input type="checkbox" id="preview-sfx-toggle" checked>
+                                <span>SFX</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="preview-video-wrap" id="nle-preview-wrap">
+                        <video id="nle-preview-video" playsinline></video>
+                        <div id="nle-sub-overlay" class="nle-sub-overlay"></div>
+                        <div id="nle-text-overlays" class="nle-text-overlays"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TIMELINE PANEL -->
+            <div class="nle-timeline" id="nle-timeline">
+                <div class="timeline-topbar">
+                    <div class="tl-zoom-group">
+                        <button class="tl-zoom-btn" id="tl-zoom-out">−</button>
+                        <input type="range" id="tl-zoom-slider" min="30" max="500" value="80">
+                        <button class="tl-zoom-btn" id="tl-zoom-in">+</button>
+                        <span class="tl-zoom-label" id="tl-zoom-label">1×</span>
+                    </div>
+                    <div class="tl-track-legend">
+                        <span class="tl-legend-dot" style="background:var(--block-video)"></span>Video
+                        <span class="tl-legend-dot" style="background:var(--block-subtitle)"></span>Subtitles
+                        <span class="tl-legend-dot" style="background:var(--block-overlay)"></span>Overlays
+                        <span class="tl-legend-dot" style="background:var(--block-sfx)"></span>SFX
+                    </div>
+                    <span class="tl-hint">Drag block edges to resize &bull; Click to inspect</span>
+                </div>
+
+                <div class="tl-grid">
+                    <!-- Track Labels Column -->
+                    <div class="tl-labels-col">
+                        <div class="tl-label tl-label-ruler"></div>
+                        <div class="tl-label tl-label-video"><span class="tl-lbl-icon">🎥</span><span>Video</span></div>
+                        <div class="tl-label tl-label-subtitles"><span class="tl-lbl-icon">��</span><span>Subtitles</span></div>
+                        <div class="tl-label tl-label-overlays"><span class="tl-lbl-icon">✨</span><span>Overlays</span></div>
+                        <div class="tl-label tl-label-sfx"><span class="tl-lbl-icon">🔊</span><span>SFX</span></div>
+                    </div>
+
+                    <!-- Scrollable Tracks -->
+                    <div class="tl-tracks-scroll" id="tl-tracks-scroll">
+                        <div class="tl-playhead" id="tl-playhead">
+                            <div class="tl-playhead-head"></div>
+                            <div class="tl-playhead-line"></div>
+                        </div>
+                        <div class="tl-ruler" id="tl-ruler"></div>
+                        <div class="tl-track tl-track-video" id="tl-track-video" data-track="video"></div>
+                        <div class="tl-track tl-track-subtitles" id="tl-track-subtitles" data-track="subtitles"></div>
+                        <div class="tl-track tl-track-overlays" id="tl-track-overlays" data-track="overlays"></div>
+                        <div class="tl-track tl-track-sfx" id="tl-track-sfx" data-track="sfx"></div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Hidden step panes for backward compat -->
+        <section id="step-pane-4" class="step-pane" style="display:none!important;"></section>
+        <section id="step-pane-5" class="step-pane" style="display:none!important;"></section>
+
+    </main>
+</div>
+
+<!-- RENDER CONFIG DRAWER -->
+<div class="render-drawer-backdrop" id="render-drawer" style="display:none;">
+    <div class="render-drawer-panel">
+        <div class="render-drawer-header">
+            <h3>🎬 Export Settings</h3>
+            <button class="render-drawer-close" id="render-drawer-close">✕</button>
+        </div>
+        <div class="render-drawer-body">
+
+            <div class="drawer-section">
+                <div class="drawer-section-label">Video Format</div>
+                <div class="radio-card-group">
+                    <label class="radio-card compact">
+                        <input type="radio" name="render-mode" value="short" checked>
+                        <div class="card-inner"><span class="icon">📱</span><strong>Short (9:16)</strong><span>TikTok / Reels</span></div>
+                    </label>
+                    <label class="radio-card compact">
+                        <input type="radio" name="render-mode" value="long">
+                        <div class="card-inner"><span class="icon">💻</span><strong>Long (16:9)</strong><span>YouTube</span></div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="drawer-section">
+                <div class="drawer-section-label">Subtitle Mode</div>
+                <select id="render-subtitle-style" class="drawer-select">
+                    <option value="karaoke">Karaoke Highlight</option>
+                    <option value="static">Static Blocks</option>
+                    <option value="none">No Subtitles</option>
+                </select>
+            </div>
+
+            <div class="drawer-section">
+                <div class="drawer-section-label">Pre-Render Feature Toggles</div>
+                <div class="toggle-list">
+                    <label class="toggle-row">
+                        <span class="toggle-switch-wrap"><input type="checkbox" id="render-auto-ducking" checked><span class="toggle-switch"></span></span>
+                        <span class="toggle-label-text"><strong>Auto-Ducking (BGM)</strong><small>Lower music during speech</small></span>
+                    </label>
+                    <label class="toggle-row">
+                        <span class="toggle-switch-wrap"><input type="checkbox" id="render-smart-crop" checked><span class="toggle-switch"></span></span>
+                        <span class="toggle-label-text"><strong>Smart Face-Tracking</strong><small>AI portrait-mode cropping</small></span>
+                    </label>
+                    <label class="toggle-row">
+                        <span class="toggle-switch-wrap"><input type="checkbox" id="render-sfx-layer" checked><span class="toggle-switch"></span></span>
+                        <span class="toggle-label-text"><strong>AI SFX Layer</strong><small>Sound effects from edit plan</small></span>
+                    </label>
+                    <label class="toggle-row">
+                        <span class="toggle-switch-wrap"><input type="checkbox" id="render-text-overlays" checked><span class="toggle-switch"></span></span>
+                        <span class="toggle-label-text"><strong>Text Overlays</strong><small>AI-suggested word highlights</small></span>
+                    </label>
+                    <label class="toggle-row">
+                        <span class="toggle-switch-wrap"><input type="checkbox" id="render-bgm" checked><span class="toggle-switch"></span></span>
+                        <span class="toggle-label-text"><strong>Background Music</strong><small>Ambient instrumental track</small></span>
+                    </label>
+                    <label class="toggle-row">
+                        <span class="toggle-switch-wrap"><input type="checkbox" id="render-trim-silence" checked><span class="toggle-switch"></span></span>
+                        <span class="toggle-label-text"><strong>Trim Silence</strong><small>Skip dead air &gt; 0.75s</small></span>
+                    </label>
+                    <label class="toggle-row">
+                        <span class="toggle-switch-wrap"><input type="checkbox" id="render-auto-zoom" checked><span class="toggle-switch"></span></span>
+                        <span class="toggle-label-text"><strong>Ken-Burns Zoom</strong><small>Slow animated camera effect</small></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="drawer-section">
+                <div class="drawer-section-label">Video Range Cuts</div>
+                <div class="range-list" id="range-cuts-list"></div>
+                <button class="btn btn-secondary btn-sm" id="add-range-cut-btn" style="margin-top:8px;">+ Add Range</button>
+            </div>
+
+            <button class="btn btn-primary btn-large w-full render-cta-btn" id="trigger-render-btn">
+                🎬 Render Final Video
+            </button>
+
+            <div class="render-progress-box" id="render-progress-section" style="display:none;">
+                <div class="circular-progress">
+                    <svg class="progress-ring" width="100" height="100">
+                        <circle class="progress-ring__circle-bg" stroke="#1f2937" stroke-width="8" fill="transparent" r="42" cx="50" cy="50"/>
+                        <circle class="progress-ring__circle" id="render-circle-progress" stroke="#8b5cf6" stroke-width="8" fill="transparent" r="42" cx="50" cy="50"/>
+                    </svg>
+                    <div class="progress-value" id="render-progress-percent">0%</div>
+                </div>
+                <h3 id="render-status-label">Queued...</h3>
+                <p id="render-status-details">Waiting for rendering slot</p>
+            </div>
+
+            <div class="rendered-output-box" id="rendered-output-section" style="display:none;">
+                <span class="check-icon">✅</span>
+                <h3>Video Rendered!</h3>
+                <video id="final-video-player" controls width="100%" class="rendered-video-preview"></video>
+                <a id="final-video-download" class="btn btn-success btn-large w-full text-center"
+                    style="display:block;text-decoration:none;margin-top:12px;" download>
+                    ⬇ Download Video
+                </a>
             </div>
         </div>
     </div>
-    
-    <script src="app.js"></script>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div id="confirm-modal" class="confirm-modal-overlay" style="display:none;">
+    <div class="confirm-modal-box">
+        <div class="confirm-modal-icon">🗑️</div>
+        <h3 class="confirm-modal-title" id="confirm-modal-title">ยืนยันการลบ</h3>
+        <p class="confirm-modal-message" id="confirm-modal-message"></p>
+        <div class="confirm-modal-actions">
+            <button type="button" class="btn btn-outline" id="confirm-modal-cancel">ยกเลิก</button>
+            <button type="button" class="btn btn-danger" id="confirm-modal-ok">ลบ</button>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden legacy elements for backward-compat JS references -->
+<span id="meta-video-name" style="display:none"></span>
+<span id="meta-video-duration" style="display:none"></span>
+<span id="meta-segment-count" style="display:none">0</span>
+<div id="subtitle-sentences-list" style="display:none"></div>
+<div id="overlays-list-tbody" style="display:none"></div>
+<select id="project-select" style="display:none"></select>
+<video id="preview-video" style="display:none"></video>
+<div id="preview-subtitle-overlay" style="display:none"></div>
+<video id="preview-video-step4" style="display:none"></video>
+<div id="preview-subtitle-overlay-step4" style="display:none"></div>
+<div id="overlay-timeline-tracks-area" style="display:none"></div>
+<div id="overlay-timeline-ruler" style="display:none"></div>
+<div id="timeline-tracks-area" style="display:none"></div>
+<div id="timeline-ruler" style="display:none"></div>
+<div id="timeline-scroll-container" style="display:none"></div>
+<select id="form-overlay-type" style="display:none"><option value="text">text</option><option value="audio">audio</option></select>
+<input id="form-overlay-start" type="number" style="display:none" value="0">
+<input id="form-overlay-end" type="number" style="display:none" value="-1">
+<input id="form-overlay-content" type="text" style="display:none">
+<select id="form-overlay-asset" style="display:none"></select>
+<select id="form-overlay-style" style="display:none"><option value="default">default</option></select>
+<select id="form-overlay-position" style="display:none"><option value="center">center</option></select>
+<input id="form-overlay-volume" type="range" style="display:none" value="1">
+<button id="save-overlay-btn" style="display:none"></button>
+<button id="add-overlay-btn" style="display:none"></button>
+<button id="download-overlays-btn" style="display:none"></button>
+<div id="overlay-edit-card" style="display:none"></div>
+<form id="overlay-form" style="display:none"></form>
+
+<script src="app.js"></script>
 </body>
 </html>
